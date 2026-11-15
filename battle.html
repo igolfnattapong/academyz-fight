@@ -240,6 +240,51 @@ body{font-family:var(--body);font-size:15px;line-height:1.5;padding:0;overflow:h
   button:hover,.rbtn a:hover{transform:scale(1.07);filter:brightness(1.05)}
 }
 @media (prefers-reduced-motion:reduce){button,.rbtn a{transition:none!important}}
+/* how-to-play: shown when a room opens (until "don't show again"); วิธีเล่น reopens it */
+#rHow{padding:calc(.3*var(--u)) calc(2.2*var(--u));border-radius:calc(4*var(--u));background:#14151fcc;color:#ffd23f;font-size:calc(1.9*var(--u));border:1px solid #ffd23f88}
+.tut{position:absolute;inset:0;z-index:40;display:grid;place-items:center;background:#0b0c14b8;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.tut[hidden]{display:none}
+.tcard{width:min(92%,calc(86*var(--u)));background:#fff;color:#14151f;border:calc(.6*var(--u)) solid #14151f;border-radius:calc(3*var(--u));box-shadow:0 calc(1*var(--u)) 0 #e8344f,0 calc(2*var(--u)) calc(5*var(--u)) #000a;padding:calc(3*var(--u)) calc(4*var(--u)) calc(2.6*var(--u));box-sizing:border-box;font-family:var(--body);animation:rpop .35s cubic-bezier(.2,1.4,.4,1)}
+.tcard h2{margin:0;font-family:"Bangers",var(--disp);font-weight:400;font-size:calc(6*var(--u));letter-spacing:.05em;line-height:1;color:#ffd23f;-webkit-text-stroke:calc(.5*var(--u)) #14151f;paint-order:stroke fill;text-shadow:0 calc(.4*var(--u)) 0 #14151f;display:flex;justify-content:space-between;align-items:baseline}
+.tcard h2 small{font-family:var(--disp);font-size:calc(2.2*var(--u));color:#8a8fa8;-webkit-text-stroke:0;text-shadow:none;letter-spacing:0}
+.tpic{height:calc(22*var(--u));margin:calc(2*var(--u)) 0;border-radius:calc(2*var(--u));background:linear-gradient(#3a2a1e,#5a3f2a);border:calc(.35*var(--u)) solid #14151f;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:calc(2.4*var(--u))}
+.tcard h3{margin:0 0 calc(.8*var(--u));font-size:calc(3.2*var(--u));font-weight:700}
+.tcard p{margin:0;font-size:calc(2.3*var(--u));line-height:1.55;color:#33364a}
+.tcard kbd{display:inline-block;font-family:var(--disp);font-weight:700;font-size:.9em;padding:0 .45em;border-radius:.35em;background:#14151f;color:#fff;line-height:1.5}
+.tcard kbd.sp{background:#ffb21c;color:#14151f}.tcard kbd.at{background:#e0263f}.tcard kbd.df{background:#1f74d8}
+.tfoot{display:flex;align-items:center;gap:calc(1.6*var(--u));margin-top:calc(2.4*var(--u))}
+.tfoot label{display:flex;align-items:center;gap:calc(.8*var(--u));font-size:calc(2*var(--u));color:#5b5f78;cursor:pointer;margin-right:auto}
+.tfoot input{width:calc(2.4*var(--u));height:calc(2.4*var(--u));accent-color:#e8344f}
+.tfoot button{all:unset;cursor:pointer;font-weight:700;font-size:calc(2.4*var(--u));padding:calc(1*var(--u)) calc(3*var(--u));border-radius:calc(4*var(--u));border:calc(.4*var(--u)) solid #14151f}
+#tPrev{background:#fff}#tNext{background:linear-gradient(#ffe36b,#ffb21c);box-shadow:0 calc(.5*var(--u)) 0 #14151f}
+.tfoot button:focus-visible,.tfoot label:focus-within{outline:3px solid #e8344f;outline-offset:2px}
+.tdots{display:flex;gap:calc(.8*var(--u))}.tdots i{width:calc(1.4*var(--u));height:calc(1.4*var(--u));border-radius:50%;background:#d6d8e2}.tdots i.on{background:#e8344f}
+.tpic .tar{width:calc(9*var(--u));height:calc(9*var(--u));filter:drop-shadow(0 calc(.5*var(--u)) 0 #0007)}.tpic .tar path{fill:#fff;stroke:#14151f;stroke-width:9;stroke-linejoin:round;paint-order:stroke}
+.tpic .tar.ok path{fill:#5dff6e}
+.tpic .tar.n2{animation:tHop 2.4s infinite}.tpic .tar.n3{animation:tHop2 2.4s infinite}
+@keyframes tHop{0%,30%{transform:none}35%,100%{transform:translateY(-12%)}}@keyframes tHop2{0%,60%{transform:none}65%,100%{transform:translateY(-12%)}}
+.tpic .tar.n2 path{animation:tFill 2.4s infinite}.tpic .tar.n3 path{animation:tFill2 2.4s infinite}
+@keyframes tFill{0%,30%{fill:#fff}35%,100%{fill:#5dff6e}}@keyframes tFill2{0%,60%{fill:#fff}65%,100%{fill:#5dff6e}}
+.tgate{position:relative;width:70%;height:calc(1*var(--u));border-radius:9px;background:#fff}
+.tgate .ring{position:absolute;right:18%;top:50%;width:calc(5.4*var(--u));height:calc(5.4*var(--u));border-radius:50%;border:calc(.6*var(--u)) solid #fff;transform:translate(50%,-50%);background:#14151f55}
+.tgate .dot{position:absolute;top:50%;width:calc(3.4*var(--u));height:calc(3.4*var(--u));border-radius:50%;background:#e8344f;border:calc(.4*var(--u)) solid #fff;transform:translate(-50%,-50%);animation:tDot 2.4s cubic-bezier(.4,0,.6,1) infinite}
+@keyframes tDot{0%{left:2%}70%,100%{left:82%}}
+.tjw{position:absolute;top:calc(2*var(--u));right:calc(5*var(--u));font-family:"Bangers",var(--disp);font-size:calc(5*var(--u));color:#ffd23f;-webkit-text-stroke:calc(.4*var(--u)) #14151f;paint-order:stroke fill;transform:rotate(-6deg);animation:tJw 2.4s infinite}
+@keyframes tJw{0%,68%{opacity:0;transform:rotate(-6deg) scale(.4)}75%{opacity:1;transform:rotate(-6deg) scale(1.15)}82%,95%{opacity:1;transform:rotate(-6deg) scale(1)}100%{opacity:0}}
+.tbtn{display:grid;place-items:center;border-radius:50%;border:calc(.55*var(--u)) solid #14151f;font-family:"Bangers",var(--disp);color:#fff;-webkit-text-stroke:calc(.5*var(--u)) #14151f;paint-order:stroke fill;box-shadow:inset 0 calc(-1*var(--u)) 0 #0004,inset 0 calc(.6*var(--u)) 0 #fff5,0 calc(.7*var(--u)) 0 #14151f;letter-spacing:.04em}
+.tbtn.sp{width:calc(13*var(--u));height:calc(13*var(--u));font-size:calc(3.4*var(--u));background:linear-gradient(#ffe36b,#ffb21c)}
+.tbtn.at{width:calc(11*var(--u));height:calc(11*var(--u));font-size:calc(3.6*var(--u));background:linear-gradient(#ff7486,#e0263f)}
+.tbtn.df{width:calc(11*var(--u));height:calc(11*var(--u));font-size:calc(3.6*var(--u));background:linear-gradient(#66bfff,#1f74d8)}
+.tbtn.kb{border-radius:calc(2*var(--u));width:auto;height:auto;padding:calc(1.2*var(--u)) calc(2.4*var(--u))}
+.tpush{animation:tPush 1.2s infinite}@keyframes tPush{0%,40%,100%{transform:none}50%,60%{transform:translateY(calc(.6*var(--u))) scale(.94);filter:brightness(1.2)}}
+.tgauge{display:flex;gap:calc(.6*var(--u));width:calc(30*var(--u))}.tgauge i{flex:1;height:calc(2.2*var(--u));border-radius:9px;background:#14151f;border:calc(.3*var(--u)) solid #fff;overflow:hidden;position:relative}
+.tgauge i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#ff6b4a,#ffd23f);transform-origin:left;animation:tG 3s infinite}
+.tgauge i:nth-child(2)::after{animation-name:tG2}.tgauge i:nth-child(3)::after{animation-name:tG3}
+@keyframes tG{0%{transform:scaleX(0)}20%,85%{transform:scaleX(1)}90%,100%{transform:scaleX(0)}}@keyframes tG2{0%,20%{transform:scaleX(0)}40%,85%{transform:scaleX(1)}90%,100%{transform:scaleX(0)}}@keyframes tG3{0%,40%{transform:scaleX(0)}60%,85%{transform:scaleX(1)}90%,100%{transform:scaleX(0)}}
+.tcol{display:flex;flex-direction:column;align-items:center;gap:calc(1.4*var(--u));color:#fff;font-weight:700;font-size:calc(2*var(--u))}
+.tvs{font-family:"Bangers",var(--disp);font-size:calc(5*var(--u));color:#fff;-webkit-text-stroke:calc(.4*var(--u)) #14151f;paint-order:stroke fill}
+.tzp{font-family:"Bangers",var(--disp);font-size:calc(6*var(--u));color:#e8344f;-webkit-text-stroke:calc(.4*var(--u)) #fff;paint-order:stroke fill}
+.tzp.lo{color:#8a8fa8;font-size:calc(4.4*var(--u))}
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="rbg" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#ff4d6a"/><stop offset=".25" stop-color="#ffd23f"/><stop offset=".5" stop-color="#5dff6e"/><stop offset=".75" stop-color="#4fd1ff"/><stop offset="1" stop-color="#c58bff"/></linearGradient></defs></svg>
 <div class="stage" id="stage">
@@ -257,7 +302,7 @@ body{font-family:var(--body);font-size:15px;line-height:1.5;padding:0;overflow:h
   <div class="rinfo" id="rinfo"></div>
   <div class="spothit" id="spHit" role="button" aria-label="ยืนตรงนี้" tabindex="-1"></div>
   <div class="tag l" id="tgL"></div><div class="tag r" id="tgR"></div>
-  <div class="rbtns" id="rbtns"><button id="rAct">เลือกตำแหน่งยืน</button><button id="rOut">ออก</button></div>
+  <div class="rbtns" id="rbtns"><button id="rAct">เลือกตำแหน่งยืน</button><button id="rOut">ออก</button><button id="rHow">วิธีเล่น</button></div>
   <div class="getready" id="getready">GET READY !</div>
   <div class="pad" id="pad">
     <button class="d" data-k="U" aria-label="ขึ้น"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M17 41 H50 V21 L83 50 L50 79 V59 H17 Z"/></svg></button><button class="d" data-k="L" aria-label="ซ้าย"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M17 41 H50 V21 L83 50 L50 79 V59 H17 Z"/></svg></button><button class="d" data-k="R" aria-label="ขวา"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M17 41 H50 V21 L83 50 L50 79 V59 H17 Z"/></svg></button><button class="d" data-k="D" aria-label="ลง"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M17 41 H50 V21 L83 50 L50 79 V59 H17 Z"/></svg></button>
@@ -273,6 +318,11 @@ body{font-family:var(--body);font-size:15px;line-height:1.5;padding:0;overflow:h
     <div class="row"><span>ดีเลย์เสียง <small style="color:var(--muted)">(กดตรงแล้วได้ GOOD ตลอด ลองปรับ)</small></span><span><button id="offM">−10</button> <span id="offV">0 ms</span> <button id="offP">+10</button></span></div>
     <div class="btns"><button class="main" id="resume">เล่นต่อ</button><button id="quit">กลับล็อบบี้</button></div>
     <div class="dev">เครื่องมือคนทำเกม: <a href="sfx-editor.html">ปรับจังหวะเสียงท่า</a></div>
+  </div></div>
+  <div class="tut" id="tut" hidden role="dialog" aria-modal="true" aria-labelledby="tTitle"><div class="tcard">
+    <h2><span id="tTitle">HOW TO PLAY</span><small id="tStep">1 / 5</small></h2>
+    <div class="tpic" id="tPic"></div><h3 id="tH"></h3><p id="tP"></p>
+    <div class="tfoot"><label><input type="checkbox" id="tNo">ไม่ต้องแสดงอีก</label><div class="tdots" id="tDots"></div><button id="tPrev">ย้อน</button><button id="tNext">ถัดไป</button></div>
   </div></div>
   <div class="result" id="result" hidden><div class="rbox">
     <h2 id="rT">YOU WIN</h2>
@@ -716,10 +766,35 @@ async function rBotJoin(){const c=Object.keys(CHARS)[Math.floor(Math.random()*5)
 async function rPreload(){try{if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();if(!SONG)setSong(await (await fetch(SONG_URL)).json());
   if(!buf)buf=await ac.decodeAudioData(await (await fetch('songs/'+SONG.file)).arrayBuffer());await loadCues();await loadGameSfx();if(pick.op)await loadSamples([pick.me,pick.op])}catch(e){}}
 const rWake=()=>{try{ac&&ac.resume()}catch(e){}}; // audio may only start after a tap
-function rStart(){ROOM.phase='play';here('play');rDraw();rWake();$('getready').classList.add('show');$('stage').classList.remove('room-on');$('go').click()}
+function rStart(){ROOM.phase='play';here('play');$('tut').hidden=true;rDraw();rWake();$('getready').classList.add('show');$('stage').classList.remove('room-on');$('go').click()}
 function rBack(){ // after a game: back to the room, both still standing, ready again
   ROOM.phase='room';here('room');ROOM.me.ready=false;if(NETR){NETR.fin=0;netMe();if(ROOM.owner&&netOn())NET.update('rooms/'+NETR.rid,{st:'room'})}if(ROOM.op&&!ROOM.op.net)ROOM.op.ready=false;$('stage').classList.add('room-on');$('pad').style.visibility='hidden';
   for(const k in P)P[k].zp=0;hud();show('me');rDraw();if(ROOM.op&&ROOM.op.bot)rLater(2500,()=>{if(ROOM.op&&ROOM.phase==='room'){ROOM.op.ready=true;rDraw()}})}
+// ---------- how to play (shown when a room opens until "ไม่ต้องแสดงอีก"; the วิธีเล่น button opens it again) ----------
+const TUT=(()=>{const T=matchMedia('(pointer:coarse)').matches,K=T?{sp:'SPACE',at:'ATK',df:'DEF'}:{sp:'Space',at:'Ctrl',df:'Shift'};
+  const A=(k,c='')=>`<svg class="tar ${c}" viewBox="0 0 100 100" style="transform:rotate(${{R:0,D:90,L:180,U:-90}[k]}deg)"><path d="M17 41 H50 V21 L83 50 L50 79 V59 H17 Z"/></svg>`;
+  const B=(c,t,push)=>`<div class="tbtn ${c}${T?'':' kb'}${push?' tpush':''}">${t}</div>`;
+  const S=[
+    {h:'เป้าหมาย: เก็บ ZP ให้มากกว่าอีกฝ่าย',p:'ทั้งสองคนเล่นเพลงเดียวกันพร้อมกัน กดได้ดีเท่าไหร่ ได้ ZP (คะแนน) มากเท่านั้น เพลงจบ ใครมี ZP มากกว่าชนะ',
+     pic:`<div class="tcol"><span>คุณ</span><span class="tzp">14,196</span></div><span class="tvs">VS</span><div class="tcol"><span>อีกฝ่าย</span><span class="tzp lo">8,264</span></div>`},
+    {h:'1. กดลูกศรให้ครบตามลำดับ',p:`แต่ละแถวจะมีลูกศรขึ้นมา กดตามจากซ้ายไปขวาให้ครบ${T?' ด้วยปุ่มลูกศรซ้ายล่าง':' ด้วยปุ่มลูกศรบนคีย์บอร์ด'} ลูกศรที่กดแล้วจะเป็นสีเขียว · กดผิดลูกศรจะสุ่มชุดใหม่ ต้องเริ่มใหม่`,
+     pic:A('U','ok')+A('R','n2')+A('D','n3')+A('L')},
+    {h:'2. กดตอนจุดแดงเข้าวงกลม',p:`กดลูกศรครบแล้ว รอให้จุดแดงวิ่งไปถึงวงกลม แล้วกด <kbd class="sp">${K.sp}</kbd> ตรงจังหวะเป๊ะได้ PERFECT ได้ ZP มากสุด · ช้าหรือเร็วไปได้ GREAT / GOOD / BAD · ลูกศรไม่ครบได้ MISS`,
+     pic:`<div class="tgate"><div class="ring"></div><div class="dot"></div></div><div class="tjw">PERFECT!</div>`},
+    {h:'3. เกจเต็มแล้ว กด ATK ตีอีกฝ่าย',p:`ทุกครั้งที่กดได้ดี เกจใต้ชื่อจะขึ้น มี 3 ช่อง พอเต็มอย่างน้อย 1 ช่อง ให้กด <kbd class="at">${K.at}</kbd> แทน ${K.sp} ตอนจุดแดงเข้าวงกลม = ปล่อยท่าโจมตี ยิ่งเกจเต็มหลายช่องยิ่งแรง ตีเข้าแล้ว ZP อีกฝ่ายจะลด`,
+     pic:`<div class="tgauge"><i></i><i></i><i></i></div>`+B('at',K.at,1)},
+    {h:'4. โดนตี กด DEF กัน',p:`ถ้าอีกฝ่ายปล่อยท่ามา ในแถวถัด ๆ ไปให้กด <kbd class="df">${K.df}</kbd> แทน ${K.sp} ตอนจุดแดงเข้าวงกลม ยิ่งกดได้ดียิ่งกันได้มาก ถ้าไม่กันจะเสีย ZP เต็ม ๆ · ระหว่างโดนตีจะตีสวนไม่ได้`,
+     pic:B('df',K.df,1)+B('sp',K.sp)+B('at',K.at)},
+  ];
+  let i=0;const box=$('tut');
+  function draw(){const s=S[i];$('tPic').innerHTML=s.pic;$('tH').textContent=s.h;$('tP').innerHTML=s.p;$('tStep').textContent=(i+1)+' / '+S.length;
+    $('tDots').innerHTML=S.map((_,j)=>`<i class="${j===i?'on':''}"></i>`).join('');$('tPrev').style.visibility=i?'':'hidden';$('tNext').textContent=i<S.length-1?'ถัดไป':'เริ่มเล่น!'}
+  function open(){i=0;try{$('tNo').checked=localStorage.getItem('mf_tut_off')==='1'}catch(e){}draw();box.hidden=false;$('tNext').focus()}
+  function close(){box.hidden=true;try{localStorage.setItem('mf_tut_off',$('tNo').checked?'1':'0')}catch(e){}}
+  $('tPrev').onclick=()=>{if(i>0){i--;draw()}};$('tNext').onclick=()=>{if(i<S.length-1){i++;draw()}else close()};
+  box.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape')close();else if(e.key==='ArrowRight')$('tNext').click();else if(e.key==='ArrowLeft')$('tPrev').click()});
+  box.onclick=e=>{if(e.target===box)close()};$('rHow').onclick=open;
+  return {first(){let off=false;try{off=localStorage.getItem('mf_tut_off')==='1'}catch(e){}if(!off)open()},open}})();
 // the lobby's player list: who is in a room and who is playing (the lobby page's presence ends when it is left)
 let HERE='room';function here(w){HERE=w;NET.init().then(u=>{if(!u)return;NET.set('online/'+u,{name:pname2,c:pick.me,at:NET.now(),where:HERE});NET.onDisc('online/'+u,null)})}
 if(ROOM){
@@ -736,7 +811,7 @@ if(ROOM){
   // load-in: black → grid → map
   setTimeout(()=>$('rload').classList.add('grid'),500);
   Promise.all([bgReady,engReady,new Promise(r=>setTimeout(r,1300))]).then(()=>{$('rload').classList.add('out');setTimeout(roomOpen,1200)});
-  const roomOpen=()=>{$('rload').hidden=true;ROOM.phase='room';rDraw();
+  const roomOpen=()=>{$('rload').hidden=true;ROOM.phase='room';rDraw();TUT.first();
     if(NETR){netRoom();return}
     if(!ROOM.owner){chatLine('ระบบ','เข้าห้องของ '+ROOM.op.name+' แล้ว');rLater(1200,()=>{ROOM.op.ready=true;chatLine(ROOM.op.name,'ยินดีต้อนรับ เลือกที่ยืนแล้วกดพร้อมเลย');rDraw()})}
     else chatLine('ระบบ','สร้างห้องแล้ว เลือกตำแหน่งยืน · รอผู้เล่นเข้าห้อง')};
