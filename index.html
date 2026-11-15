@@ -750,7 +750,7 @@ let selRoom=1;
 let NROOMS=[],ONLINE={},netL=false;
 async function netLobby(){if(netL)return;netL=true;const uid=await NET.init();
   if(!uid){line('ระบบ','ต่อระบบออนไลน์ไม่ได้ตอนนี้ · เล่นกับบอทได้ตามปกติ');return}
-  const here={name:pname,c:me,at:NET.now(),where:'lobby'};NET.set('online/'+uid,here);NET.onDisc('online/'+uid,null);
+  const beat=()=>{NET.set('online/'+uid,{name:pname,c:me,at:NET.now(),where:'lobby'});NET.onDisc('online/'+uid,null)};beat();setTimeout(beat,2500);setInterval(beat,20000);
   NET.sub('online',o=>{ONLINE=o||{};if($('app').dataset.s==='s4')drawLobby()});
   NET.sub('rooms',rs=>{NROOMS=Object.entries(rs||{}).filter(([k,r])=>k!=='_lobby'&&r&&r.owner&&r.p&&r.p[r.owner]).map(([k,r])=>{const n=Object.keys(r.p).length,s=SONGS2.findIndex(x=>x.id===r.song);
       return {id:k,no:r.no||k.slice(-3),name:String(r.name||'ห้อง').slice(0,24),host:String(r.host||'').slice(0,16),c:CHARS[r.c]?r.c:'hero',lock:!!r.lock,pass:r.pass||'',song:s<0?0:s,map:0,full:n>=2,play:r.st==='play'}}).sort((a,b)=>a.full-b.full);
@@ -760,7 +760,7 @@ async function netLobby(){if(netL)return;netL=true;const uid=await NET.init();
 function drawLobby(){$('pname').value=pname;CHIBI.set($('lChibi'),me);
   {const v=INV.load();for(const e of document.querySelectorAll('#s4 [data-eq]')){const [k,i]=e.dataset.eq.split('.'),key=k==='pet'?v.eq.pet:v.eq[k][+i],t=key&&v.own[key]&&thing(key);
     e.innerHTML=t?`<img src="${t.img}" alt="${t.th}">`:'';e.classList.toggle('has',!!t);e.style.setProperty('--rc',t?INV.RANK[t.r].col:'');e.title=t?`${t.th} (${t.tier} +${INV.level(key,v)}) · ${FX.text(key,INV.level(key,v))}`:''}}
-  const ppl=[[pname,'ออนไลน์ (คุณ)'],...Object.entries(ONLINE).filter(([u])=>u!==NET.uid).map(([u,o])=>[o.name||'ผู้เล่น',o.where==='play'?'เล่นอยู่':o.where==='room'?'อยู่ในห้อง':'ออนไลน์']),...HOSTS.map(([h])=>[h,'บอทรอในห้อง'])];
+  const ppl=[[pname,'ออนไลน์ (คุณ)'],...Object.entries(ONLINE).filter(([u,o])=>u!==NET.uid&&o&&NET.now()-(o.at||0)<90000).map(([u,o])=>[o.name||'ผู้เล่น',o.where==='play'?'เล่นอยู่':o.where==='room'?'อยู่ในห้อง':'ออนไลน์']),...HOSTS.map(([h])=>[h,'บอทรอในห้อง'])];
   $('users').innerHTML=ppl.map(([h,w],i)=>`<div><span>${esc(h)}</span><span class="w${i&&w.startsWith('บอท')?'':' on'}">${w}</span></div>`).join('');
   const q=$('q').value.trim().toLowerCase(),all=[...NROOMS,...ROOMS].filter(r=>!q||(r.name+r.host).toLowerCase().includes(q));
   $('rlist').innerHTML=all.map(r=>`<div class="room ${r.full?'full':'wait'}${r.no===selRoom&&!r.full?' sel':''}" data-no="${r.no}" role="button" tabindex="0">

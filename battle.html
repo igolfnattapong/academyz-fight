@@ -717,7 +717,7 @@ function rBack(){ // after a game: back to the room, both still standing, ready 
 // the lobby's player list: who is in a room and who is playing (the lobby page's presence ends when it is left)
 let HERE='room';function here(w){HERE=w;NET.init().then(u=>{if(!u)return;NET.set('online/'+u,{name:pname2,c:pick.me,at:NET.now(),where:HERE});NET.onDisc('online/'+u,null)})}
 if(ROOM){
-  if(CHARS[QP.get('me')])pick.me=QP.get('me');here('room');setTimeout(()=>here(HERE),2500);
+  if(CHARS[QP.get('me')])pick.me=QP.get('me');here('room');setTimeout(()=>here(HERE),2500);setInterval(()=>here(HERE),20000);
   ROOM.swap=!ROOM.owner;if(ROOM.swap){$('stage').classList.add('swap');for(const e of document.querySelectorAll('.hud .side')){const l=e.classList.contains('l');e.classList.toggle('l',!l);e.classList.toggle('r',l)}}
   ROOM.meP=meCard();
   $('over').style.display='none';$('stage').classList.add('room-on');$('pad').style.visibility='hidden';$('rload').hidden=false;
