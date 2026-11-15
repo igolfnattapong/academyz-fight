@@ -116,7 +116,7 @@ body{font-family:var(--body);font-size:15px;line-height:1.5;padding:0;overflow:h
 .rbox{display:flex;flex-direction:column;align-items:center;gap:calc(2*var(--u));width:min(92%,calc(120*var(--u)))}
 .rbox h2{margin:0;font-family:"Bangers",var(--disp);font-weight:400;font-size:calc(13*var(--u));letter-spacing:.06em;line-height:1;color:var(--rc,#ffd23f);-webkit-text-stroke:calc(1*var(--u)) #14151f;paint-order:stroke fill;text-shadow:0 calc(1*var(--u)) 0 #14151f;animation:rpop .6s cubic-bezier(.2,1.6,.4,1)}
 @keyframes rpop{0%{transform:scale(.2) rotate(-12deg);opacity:0}100%{transform:none;opacity:1}}
-.rcols{display:grid;grid-template-columns:1fr 1fr;gap:calc(2*var(--u));width:100%}
+.rcols{display:grid;grid-template-columns:1fr 1fr;gap:calc(2*var(--u));width:100%}.stage.swap #rL{order:2}.stage.swap #rR{order:1}
 .rcol{background:rgba(15,10,6,.72);border:calc(.35*var(--u)) solid rgba(255,255,255,.7);border-radius:calc(2*var(--u));padding:calc(1.6*var(--u)) calc(2.4*var(--u));color:#fff;font-size:calc(2.6*var(--u))}
 .rcol.win{border-color:#ffd23f;box-shadow:0 0 calc(2*var(--u)) #ffd23f88}
 .rcol h3{margin:0 0 calc(.8*var(--u));font-size:calc(2.8*var(--u));display:flex;justify-content:space-between;gap:calc(1*var(--u))}
@@ -631,7 +631,7 @@ async function netRoom(){const uid=await NET.init();
     if(!r||!r.ok){chatLine('ระบบ','ห้องเต็มหรือปิดไปแล้ว · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',2500);return}
     NET.onDisc('rooms/'+NETR.rid+'/p/'+uid,null)}
   NETR.me='rooms/'+NETR.rid+'/p/'+uid;NETR.live=1;
-  addEventListener('pagehide',()=>{try{ROOM.owner?NET.remove('rooms/'+NETR.rid):NET.remove(NETR.me)}catch(e){}});NET.update('online/'+uid,{where:'room'});
+  addEventListener('pagehide',()=>{try{ROOM.owner?NET.remove('rooms/'+NETR.rid):NET.remove(NETR.me)}catch(e){}});
   const R='rooms/'+NETR.rid;
   NET.sub(R+'/owner',o=>{if(!o&&!ROOM.owner&&!NETR.closed){NETR.closed=1;if(running||NETR.fin===1)abortGame();chatLine('ระบบ','เจ้าของห้องออกแล้ว ห้องปิด · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',1800)}});
   NET.sub(R+'/p',ps=>netPlayers(ps||{}));
@@ -644,7 +644,7 @@ let netMounting=null;
 function abortGame(){running=false;NETR.fin=0;try{src&&src.stop()}catch(e){}camOut();anim=null;for(const t of ['tcold','tdim','tfl'])$(t).style.opacity=0;queue=[];for(const k in CLASH)delete CLASH[k];
   $('lane').classList.remove('show');$('getready').classList.remove('show');for(const id of ['jL','jR','pop'])$(id).classList.remove('show');$('result').hidden=true;
   for(const k in P){P[k].inc=null;P[k].zp=0;P[k].g=0}hud();show('me');popText('50%','เกมจบ','อีกฝ่ายหลุดออก','#fff');
-  ROOM.phase='room';ROOM.me.ready=false;netMe();if(ROOM.owner&&NET.on)NET.update('rooms/'+NETR.rid,{st:'room'});$('stage').classList.add('room-on');$('pad').style.visibility='hidden'}
+  ROOM.phase='room';here('room');ROOM.me.ready=false;netMe();if(ROOM.owner&&NET.on)NET.update('rooms/'+NETR.rid,{st:'room'});$('stage').classList.add('room-on');$('pad').style.visibility='hidden'}
 async function netPlayers(ps){const uid=NET.uid,k=Object.keys(ps).find(x=>x!==uid),o=k&&ps[k];
   if(o&&!NETR.opUid){NETR.opUid=k;pick.op=CHARS[o.c]?o.c:'hero';PET.op=PETS.includes(o.pet)?o.pet:null;GEAR.op=Array.isArray(o.gear)?o.gear:[];petImg('op');
     ROOM.op={name:String(o.name||'ผู้เล่น').slice(0,16),net:true,ready:!!o.ready,placed:!!o.placed,tier:tierBy(o.tier),pic:typeof o.pic==='string'&&o.pic.startsWith('data:image/')?o.pic:null};
@@ -710,12 +710,14 @@ async function rBotJoin(){const c=Object.keys(CHARS)[Math.floor(Math.random()*5)
 async function rPreload(){try{if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();if(!SONG)setSong(await (await fetch(SONG_URL)).json());
   if(!buf)buf=await ac.decodeAudioData(await (await fetch('songs/'+SONG.file)).arrayBuffer());await loadCues();await loadGameSfx();if(pick.op)await loadSamples([pick.me,pick.op])}catch(e){}}
 const rWake=()=>{try{ac&&ac.resume()}catch(e){}}; // audio may only start after a tap
-function rStart(){ROOM.phase='play';rDraw();rWake();$('getready').classList.add('show');$('stage').classList.remove('room-on');$('go').click()}
+function rStart(){ROOM.phase='play';here('play');rDraw();rWake();$('getready').classList.add('show');$('stage').classList.remove('room-on');$('go').click()}
 function rBack(){ // after a game: back to the room, both still standing, ready again
-  ROOM.phase='room';ROOM.me.ready=false;if(NETR){NETR.fin=0;netMe();if(ROOM.owner&&netOn())NET.update('rooms/'+NETR.rid,{st:'room'})}if(ROOM.op&&!ROOM.op.net)ROOM.op.ready=false;$('stage').classList.add('room-on');$('pad').style.visibility='hidden';
+  ROOM.phase='room';here('room');ROOM.me.ready=false;if(NETR){NETR.fin=0;netMe();if(ROOM.owner&&netOn())NET.update('rooms/'+NETR.rid,{st:'room'})}if(ROOM.op&&!ROOM.op.net)ROOM.op.ready=false;$('stage').classList.add('room-on');$('pad').style.visibility='hidden';
   for(const k in P)P[k].zp=0;hud();show('me');rDraw();if(ROOM.op&&ROOM.op.bot)rLater(2500,()=>{if(ROOM.op&&ROOM.phase==='room'){ROOM.op.ready=true;rDraw()}})}
+// the lobby's player list: who is in a room and who is playing (the lobby page's presence ends when it is left)
+let HERE='room';function here(w){HERE=w;NET.init().then(u=>{if(!u)return;NET.set('online/'+u,{name:pname2,c:pick.me,at:NET.now(),where:HERE});NET.onDisc('online/'+u,null)})}
 if(ROOM){
-  if(CHARS[QP.get('me')])pick.me=QP.get('me');
+  if(CHARS[QP.get('me')])pick.me=QP.get('me');here('room');setTimeout(()=>here(HERE),2500);
   ROOM.swap=!ROOM.owner;if(ROOM.swap){$('stage').classList.add('swap');for(const e of document.querySelectorAll('.hud .side')){const l=e.classList.contains('l');e.classList.toggle('l',!l);e.classList.toggle('r',l)}}
   ROOM.meP=meCard();
   $('over').style.display='none';$('stage').classList.add('room-on');$('pad').style.visibility='hidden';$('rload').hidden=false;

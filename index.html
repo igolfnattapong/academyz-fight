@@ -760,7 +760,7 @@ async function netLobby(){if(netL)return;netL=true;const uid=await NET.init();
 function drawLobby(){$('pname').value=pname;CHIBI.set($('lChibi'),me);
   {const v=INV.load();for(const e of document.querySelectorAll('#s4 [data-eq]')){const [k,i]=e.dataset.eq.split('.'),key=k==='pet'?v.eq.pet:v.eq[k][+i],t=key&&v.own[key]&&thing(key);
     e.innerHTML=t?`<img src="${t.img}" alt="${t.th}">`:'';e.classList.toggle('has',!!t);e.style.setProperty('--rc',t?INV.RANK[t.r].col:'');e.title=t?`${t.th} (${t.tier} +${INV.level(key,v)}) · ${FX.text(key,INV.level(key,v))}`:''}}
-  const ppl=[[pname,'ออนไลน์ (คุณ)'],...Object.entries(ONLINE).filter(([u])=>u!==NET.uid).map(([u,o])=>[o.name,o.where==='room'?'อยู่ในห้อง':'ออนไลน์']),...HOSTS.map(([h])=>[h,'บอทรอในห้อง'])];
+  const ppl=[[pname,'ออนไลน์ (คุณ)'],...Object.entries(ONLINE).filter(([u])=>u!==NET.uid).map(([u,o])=>[o.name||'ผู้เล่น',o.where==='play'?'เล่นอยู่':o.where==='room'?'อยู่ในห้อง':'ออนไลน์']),...HOSTS.map(([h])=>[h,'บอทรอในห้อง'])];
   $('users').innerHTML=ppl.map(([h,w],i)=>`<div><span>${esc(h)}</span><span class="w${i&&w.startsWith('บอท')?'':' on'}">${w}</span></div>`).join('');
   const q=$('q').value.trim().toLowerCase(),all=[...NROOMS,...ROOMS].filter(r=>!q||(r.name+r.host).toLowerCase().includes(q));
   $('rlist').innerHTML=all.map(r=>`<div class="room ${r.full?'full':'wait'}${r.no===selRoom&&!r.full?' sel':''}" data-no="${r.no}" role="button" tabindex="0">
