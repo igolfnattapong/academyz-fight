@@ -1,0 +1,9 @@
+{
+  "id": "himma",
+  "title": "HIMMA",
+  "artist": "HEIRS",
+  "file": "himma.mp3",
+  "bpm": 115,
+  "first": 0.619,
+  "note": "bpm and first downbeat fitted to the kick drum over the whole song (tools/song_beat.py + fit); same offset convention as battle.json"
+}
