@@ -621,7 +621,7 @@ function netStart(){NET.update('rooms/'+NETR.rid,{st:'play',ev:null,start:{at:NE
 function myRec(){let pic=null;try{const a=localStorage.getItem('mf_avatar');if(a&&a.length<60000)pic=a}catch(e){}
   return {name:pname2,c:pick.me,tier:ROOM.meP.tier.name,pic,placed:ROOM.me.placed,ready:false,gear:GEAR.me,pet:PET.me||null,zp:0,g:0,done:-1,at:NET.now()}}
 async function netRoom(){const uid=await NET.init();
-  if(!uid){chatLine('ระบบ','ต่อระบบออนไลน์ไม่ได้ · ใช้ห้องนี้กับบอทแทน');NETR.dead=1;if(ROOM.owner)rLater(3000,()=>{if(!ROOM.op)rBotJoin()});else{chatLine('ระบบ','กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',2500)}return}
+  if(!uid){NETR.dead=1;if(ROOM.owner)chatLine('ระบบ','ต่อระบบออนไลน์ไม่ได้ · ยังไม่มีใครเข้าห้องนี้ได้ ลองออกแล้วสร้างห้องใหม่');else{chatLine('ระบบ','ต่อระบบออนไลน์ไม่ได้');chatLine('ระบบ','กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',2500)}return}
   if(ROOM.owner){const room={no:+ROOM.no||0,name:ROOM.name,song:(QP.get('song')||'wake'),map:ROOM.map,lock:ROOM.lock,pass:QP.get('pw')||'',owner:uid,host:pname2,c:pick.me,at:NET.now(),st:'room',p:{[uid]:myRec()}};
     NETR.rid=NET.push('rooms',room);NET.onDisc('rooms/'+NETR.rid,null);
     const q=new URLSearchParams(location.search);q.set('net',NETR.rid);history.replaceState(null,'','?'+q);
@@ -733,7 +733,7 @@ if(ROOM){
   const roomOpen=()=>{$('rload').hidden=true;ROOM.phase='room';rDraw();
     if(NETR){netRoom();return}
     if(!ROOM.owner){chatLine('ระบบ','เข้าห้องของ '+ROOM.op.name+' แล้ว');rLater(1200,()=>{ROOM.op.ready=true;chatLine(ROOM.op.name,'ยินดีต้อนรับ เลือกที่ยืนแล้วกดพร้อมเลย');rDraw()})}
-    else{chatLine('ระบบ','สร้างห้องแล้ว เลือกตำแหน่งยืน · ไม่มีคนเข้าใน 20 วินาที บอทจะเข้ามาเล่นด้วย');rLater(20000,()=>{if(!ROOM.op){chatLine('ระบบ','ไม่มีผู้เล่นเข้า บอทเข้ามาแทน');rBotJoin()}})}};
+    else chatLine('ระบบ','สร้างห้องแล้ว เลือกตำแหน่งยืน · รอผู้เล่นเข้าห้อง')};
   $('spHit').onclick=()=>rPlace();$('spHit').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();rPlace()}};
   $('rAct').onclick=()=>{if(ROOM.phase!=='room')return;const me=ROOM.me,op=ROOM.op;
     if(!me.placed)return rPlace();
