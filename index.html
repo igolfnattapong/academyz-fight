@@ -69,7 +69,7 @@ button{font-family:inherit}
 .srow input[type=range]{width:calc(26*var(--u));accent-color:var(--red)}.srow b{min-width:calc(7*var(--u));text-align:right;font-family:var(--en);font-weight:400}
 .offc{display:flex;align-items:center;gap:calc(1*var(--u))}.srow .btn{font-size:calc(2.2*var(--u));padding:calc(.5*var(--u)) calc(1.6*var(--u))}
 /* ---- loadout bag with real things ---- */
-.botb.live{background:#2fae62!important}#users .w.on{color:#2fae62}
+.botb.live{background:#2fae62!important}#users .w.on{color:#2fae62}#users .w.sR{color:#e08a00}#users .w.sP{color:#e0352b}
 #s4 .sq.has{border-color:var(--rc)!important;border-style:solid!important;background:#fff!important;display:grid;place-items:center}#s4 .sq img{width:86%;height:86%;object-fit:contain}
 .itinfo{width:calc(64*var(--u));max-width:90%;max-height:90%;overflow:auto;box-sizing:border-box;align-items:stretch}
 .itinfo .big{align-self:center;width:calc(16*var(--u));height:calc(16*var(--u));object-fit:contain}
@@ -761,7 +761,7 @@ function drawLobby(){$('pname').value=pname;CHIBI.set($('lChibi'),me);
   {const v=INV.load();for(const e of document.querySelectorAll('#s4 [data-eq]')){const [k,i]=e.dataset.eq.split('.'),key=k==='pet'?v.eq.pet:v.eq[k][+i],t=key&&v.own[key]&&thing(key);
     e.innerHTML=t?`<img src="${t.img}" alt="${t.th}">`:'';e.classList.toggle('has',!!t);e.style.setProperty('--rc',t?INV.RANK[t.r].col:'');e.title=t?`${t.th} (${t.tier} +${INV.level(key,v)}) · ${FX.text(key,INV.level(key,v))}`:''}}
   const ppl=[[pname,'ออนไลน์ (คุณ)'],...Object.entries(ONLINE).filter(([u,o])=>u!==NET.uid&&o&&NET.now()-(o.at||0)<90000).map(([u,o])=>[o.name||'ผู้เล่น',o.where==='play'?'เล่นอยู่':o.where==='room'?'อยู่ในห้อง':'ออนไลน์']),...HOSTS.map(([h])=>[h,'บอทรอในห้อง'])];
-  $('users').innerHTML=ppl.map(([h,w],i)=>`<div><span>${esc(h)}</span><span class="w${i&&w.startsWith('บอท')?'':' on'}">${w}</span></div>`).join('');
+  $('users').innerHTML=ppl.map(([h,w],i)=>`<div><span>${esc(h)}</span><span class="w ${w=='เล่นอยู่'?'sP':w.endsWith('ในห้อง')?'sR':'on'}">${w}</span></div>`).join('');
   const q=$('q').value.trim().toLowerCase(),all=[...NROOMS,...ROOMS].filter(r=>!q||(r.name+r.host).toLowerCase().includes(q));
   $('rlist').innerHTML=all.map(r=>`<div class="room ${r.full?'full':'wait'}${r.no===selRoom&&!r.full?' sel':''}" data-no="${r.no}" role="button" tabindex="0">
     <span class="l"><b>${r.bot?'<span class="botb">BOT</span>':'<span class="botb live">LIVE</span>'}${esc(r.name)}${r.lock?'<span class="lk" aria-label="ล็อก">🔒</span>':''}</b><span>${esc(r.host)} (${CHARS[r.c].name})</span><span>music: ${SONGS2[r.song].name} (${SONGS2[r.song].bpm})</span></span>
