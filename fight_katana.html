@@ -295,7 +295,7 @@ if(typeof slashLine==='function'){const _s=slashLine;slashLine=function(...a){S(
 if(typeof bolt==='function'){const _b=bolt;bolt=function(...a){S('zap');return _b(...a)}}
 if(typeof sendCurse==='function'){const _c=sendCurse;sendCurse=function(...a){S('cast');return _c(...a)}}
 
-if(NOBG){let _ld=-1,_lf=-1;const _r2=render;render=function(){_r2();const d=Math.round(dim.v*50)/50,f=Math.round(Math.min(.5,flash)*50)/50;if(d!==_ld||f!==_lf){_ld=d;_lf=f;parent.postMessage({ev:'tint',dim:d,flash:f,col:'255,70,90'},'*')}}}
+if(NOBG){let _ld=-1,_lf=-1,_lc=-1;const _r2=render;render=function(){_r2();const d=Math.round(dim.v*50)/50,f=Math.round(Math.min(.5,flash)*50)/50,c=typeof cold==='undefined'?0:Math.round(cold.v*.18*100)/100;if(d!==_ld||f!==_lf||c!==_lc){_ld=d;_lf=f;_lc=c;parent.postMessage({ev:'tint',dim:d,flash:f,cold:c,col:'255,70,90'},'*')}}}
 let last=performance.now();
 function frame(now){const dt=Math.min(.05,Math.max(0,(now-last)/1000))*scale;last=now;update(dt);render();requestAnimationFrame(frame)}
 requestAnimationFrame(frame);

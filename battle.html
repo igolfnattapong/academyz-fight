@@ -237,7 +237,7 @@ body{font-family:var(--body);font-size:15px;line-height:1.5;padding:0;overflow:h
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="rbg" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#ff4d6a"/><stop offset=".25" stop-color="#ffd23f"/><stop offset=".5" stop-color="#5dff6e"/><stop offset=".75" stop-color="#4fd1ff"/><stop offset="1" stop-color="#c58bff"/></linearGradient></defs></svg>
 <div class="stage" id="stage">
-  <div class="cam" id="cam"><div class="pet me" id="petMe"><i><img alt=""></i><b class="pz"></b><u class="pcd" hidden><s></s></u></div><div class="pet op" id="petOp"><i><img alt=""></i><b class="pz"></b><u class="pcd" hidden><s></s></u></div><div class="tint" id="tdim"></div><div class="tint" id="tfl"></div><div class="spot l" id="spL"></div><div class="spot r" id="spR"></div></div>
+  <div class="cam" id="cam"><div class="pet me" id="petMe"><i><img alt=""></i><b class="pz"></b><u class="pcd" hidden><s></s></u></div><div class="pet op" id="petOp"><i><img alt=""></i><b class="pz"></b><u class="pcd" hidden><s></s></u></div><div class="tint" id="tcold" style="background:rgb(30,90,190)"></div><div class="tint" id="tdim"></div><div class="tint" id="tfl"></div><div class="spot l" id="spL"></div><div class="spot r" id="spR"></div></div>
   <div class="hud">
     <div class="song"><i id="song"></i></div>
     <div class="side l"><div class="av" id="aL"></div><div class="n" id="nL">คุณ</div><div class="zp" id="zpL">0</div><div class="gauge" id="gL"><i><b></b></i><i><b></b></i><i><b></b></i></div></div>
@@ -529,9 +529,9 @@ function camZoom(side){const st=$('stage'),cs=getComputedStyle(st),x=parseFloat(
 function camOut(){clearTimeout(camT);camT=null;const c=$('cam');c.style.transition='transform .45s ease-in-out';c.style.transform=''}
 addEventListener('message',e=>{const d=e.data||{},src=FR.me&&e.source===FR.me.contentWindow?'me':FR.op&&e.source===FR.op.contentWindow?'op':null;if(!src||!anim||src!==anim.who)return;
   if(d.ev==='sfx'){charSfx(pick[src],d.k,d.p);return}
-  if(d.ev==='tint'){$('tdim').style.opacity=d.dim;const fl=$('tfl');fl.style.background=`rgb(${d.col})`;fl.style.opacity=d.flash;return} // full-screen dim / flash from the playing attack
+  if(d.ev==='tint'){$('tcold').style.opacity=d.cold||0;$('tdim').style.opacity=d.dim;const fl=$('tfl');fl.style.background=`rgb(${d.col})`;fl.style.opacity=d.flash;return} // full-screen dim / flash from the playing attack
   if(d.ev==='impact'){anim.hit=true;deliver(anim)} // guard pose holds until the result arrives
-  if(d.ev==='done'){anim=null;$('tdim').style.opacity=0;$('tfl').style.opacity=0;setTimeout(pump,200)}});
+  if(d.ev==='done'){anim=null;$('tcold').style.opacity=0;$('tdim').style.opacity=0;$('tfl').style.opacity=0;setTimeout(pump,200)}});
 
 // ---------- bot: simple mid-skill player ----------
 let botQ=[];
@@ -641,7 +641,7 @@ async function netRoom(){const uid=await NET.init();
   NET.subAdd(R+'/ev',(k,e)=>{if(!e||e.u===uid||e.g!==NETR.g||NETR.seen[k])return;NETR.seen[k]=1;netEv(e)})}
 let netMounting=null;
 // stop a game right away (the other player left): no result, no rewards; back in the room
-function abortGame(){running=false;NETR.fin=0;try{src&&src.stop()}catch(e){}camOut();anim=null;queue=[];for(const k in CLASH)delete CLASH[k];
+function abortGame(){running=false;NETR.fin=0;try{src&&src.stop()}catch(e){}camOut();anim=null;for(const t of ['tcold','tdim','tfl'])$(t).style.opacity=0;queue=[];for(const k in CLASH)delete CLASH[k];
   $('lane').classList.remove('show');$('getready').classList.remove('show');for(const id of ['jL','jR','pop'])$(id).classList.remove('show');$('result').hidden=true;
   for(const k in P){P[k].inc=null;P[k].zp=0;P[k].g=0}hud();show('me');popText('50%','เกมจบ','อีกฝ่ายหลุดออก','#fff');
   ROOM.phase='room';ROOM.me.ready=false;netMe();if(ROOM.owner&&NET.on)NET.update('rooms/'+NETR.rid,{st:'room'});$('stage').classList.add('room-on');$('pad').style.visibility='hidden'}
