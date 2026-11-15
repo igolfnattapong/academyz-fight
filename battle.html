@@ -637,7 +637,7 @@ async function netRoom(){const uid=await NET.init();
   NET.sub(R+'/p',ps=>netPlayers(ps||{}));
   let first=true;NET.sub(R+'/start',st=>{if(!st)return;if(first&&st.at<NET.now()){first=false;NETR.g=st.g;return}first=false;
     if(st.g>NETR.g&&ROOM.phase==='room'){NETR.g=st.g;NETR.startAt=st.at;NETR.opDone=-1;rStart()}});
-  NET.subAdd(R+'/chat',(k,m)=>{if(m&&m.t)chatLine(m.n||'?',String(m.t).slice(0,120))},30);
+  const chatFrom=NET.now()-1500;NET.subAdd(R+'/chat',(k,m)=>{if(m&&m.t&&(m.at||0)>=chatFrom)chatLine(m.n||'?',String(m.t).slice(0,120))},30);
   NET.subAdd(R+'/ev',(k,e)=>{if(!e||e.u===uid||e.g!==NETR.g||NETR.seen[k])return;NETR.seen[k]=1;netEv(e)})}
 let netMounting=null;
 // stop a game right away (the other player left): no result, no rewards; back in the room
@@ -651,7 +651,7 @@ async function netPlayers(ps){const uid=NET.uid,k=Object.keys(ps).find(x=>x!==ui
     chatLine('ระบบ',ROOM.op.name+' เข้าห้อง');sfx('GOOD');rPreload();netMounting=rMount();await netMounting;netMounting=null;rPanel('op',ROOM.op);rVis();rDraw();return}
   if(!o&&NETR.opUid){const n=ROOM.op?ROOM.op.name:'ผู้เล่น',mid=running||NETR.fin===1;NETR.opUid=null;ROOM.op=null;
     if(mid){abortGame();chatLine('ระบบ',n+' หลุดออกจากห้อง · เกมจบ')}else chatLine('ระบบ',n+' ออกจากห้อง');
-    pick.op=null;rPanel('op',null);rVis();if(ROOM.owner)chatLine('ระบบ','รอผู้เล่นคนใหม่เข้าห้อง');rDraw();return}
+    pick.op=null;rPanel('op',null);rVis();if(ROOM.owner){NET.remove('rooms/'+NETR.rid+'/chat');chatLine('ระบบ','รอผู้เล่นคนใหม่เข้าห้อง')}rDraw();return}
   if(!o||netMounting)return;
   const op=ROOM.op;if(!op)return;const pl=!!o.placed!==op.placed;op.ready=!!o.ready;op.placed=!!o.placed;if(pl)rVis();
   if(running||NETR.fin){P.op.zp=o.zp||0;P.op.g=o.g||0;if(typeof o.done==='number')NETR.opDone=o.done;$('zpR').textContent=Math.round(P.op.zp).toLocaleString()}
