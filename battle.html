@@ -258,7 +258,7 @@ body{font-family:var(--body);font-size:15px;line-height:1.5;padding:0;overflow:h
     <button class="sp" data-k="SP">SPACE</button><button class="ct" data-k="CT">ตี</button><button class="sh" data-k="SH">กัน</button>
   </div>
   <form class="chat" id="chat" autocomplete="off"><input id="chatIn" maxlength="80" placeholder="แชท (Enter)" aria-label="พิมพ์แชท"><button type="submit">SEND</button></form>
-  <button class="gear" id="gear" aria-label="หยุดเกม / ตั้งค่า" hidden>❚❚</button>
+  <button class="gear" id="gear" aria-label="หยุดเกม / ตั้งค่า" hidden style="display:none">❚❚</button>
   <div class="menu" id="menu"><div class="box" role="dialog" aria-label="หยุดเกม">
     <h2 id="menuT">หยุดเกม</h2>
     <div class="row"><span>เพลง</span><input type="range" id="volM" min="0" max="100" step="5" aria-label="ความดังเพลง"></div>
@@ -592,7 +592,7 @@ $('go').onclick=async()=>{const go=$('go');go.textContent='กำลังโห
 // ---------- pause menu: suspending the audio clock freezes rows, gate and bot; the engines are slowed to 0 ----------
 let paused=false;
 function setEngines(v){for(const k in FR)FR[k].contentWindow.postMessage({cmd:'speed',v},'*')}
-function pause(){if(!running||paused||netOn())return; // no pausing against a real player
+function pause(){return; // no pause / leave during a game (settings are on the school screen)
 paused=true;if(camT){clearTimeout(camT);camT=null;camLeft-=performance.now()-camAt}else camLeft=0;ac.suspend();setEngines(0);$('menu').classList.add('on');$('resume').focus()}
 function resume(){if(!paused)return;paused=false;if(camLeft>0){camAt=performance.now();camT=setTimeout(camOut,camLeft)}$('menu').classList.remove('on');ac.resume();setEngines(1)}
 $('gear').onclick=pause;$('resume').onclick=resume;
@@ -604,7 +604,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
 const KM={ArrowLeft:'L',ArrowUp:'U',ArrowRight:'R',ArrowDown:'D',' ':'SP',Spacebar:'SP',Control:'CT',Shift:'SH'};
 addEventListener('keydown',e=>{if(e.target===$('chatIn')){if(e.key==='Escape')$('chatIn').blur();return}
   if(e.key==='Enter'){e.preventDefault();$('chatIn').focus();return}
-  if(e.key==='Escape'&&running){e.preventDefault();paused?resume():pause();return}const k=KM[e.key];if(!k)return;if(running)e.preventDefault();if(e.repeat||!running||paused)return;press(k)});
+  if(e.key==='Escape'&&running){e.preventDefault();return}const k=KM[e.key];if(!k)return;if(running)e.preventDefault();if(e.repeat||!running||paused)return;press(k)});
 function press(k){if(!running||paused)return;if(KEYS.includes(k))arrow(k);else act(k)}
 for(const b of document.querySelectorAll('#pad button')){const k=b.dataset.k;b.addEventListener('pointerdown',e=>{e.preventDefault();b.classList.add('act');if(running&&!paused)press(k)});
   for(const ev of ['pointerup','pointerleave','pointercancel'])b.addEventListener(ev,()=>b.classList.remove('act'))}
@@ -630,21 +630,28 @@ async function netRoom(){const uid=await NET.init();
     const r=own&&await NET.tx('rooms/'+NETR.rid+'/p',p=>{p=p||{};if(Object.keys(p).length>=2&&!p[uid])return;p[uid]=myRec();return p});
     if(!r||!r.ok){chatLine('ระบบ','ห้องเต็มหรือปิดไปแล้ว · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',2500);return}
     NET.onDisc('rooms/'+NETR.rid+'/p/'+uid,null)}
-  NETR.me='rooms/'+NETR.rid+'/p/'+uid;NETR.live=1;NET.update('online/'+uid,{where:'room'});
+  NETR.me='rooms/'+NETR.rid+'/p/'+uid;NETR.live=1;
+  addEventListener('pagehide',()=>{try{ROOM.owner?NET.remove('rooms/'+NETR.rid):NET.remove(NETR.me)}catch(e){}});NET.update('online/'+uid,{where:'room'});
   const R='rooms/'+NETR.rid;
-  NET.sub(R+'/owner',o=>{if(!o&&!ROOM.owner&&!NETR.closed){NETR.closed=1;chatLine('ระบบ','เจ้าของห้องออกแล้ว ห้องปิด · กลับไปล็อบบี้…');if(running)finish();setTimeout(()=>location.href='index.html#lobby',3000)}});
+  NET.sub(R+'/owner',o=>{if(!o&&!ROOM.owner&&!NETR.closed){NETR.closed=1;if(running||NETR.fin===1)abortGame();chatLine('ระบบ','เจ้าของห้องออกแล้ว ห้องปิด · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',1800)}});
   NET.sub(R+'/p',ps=>netPlayers(ps||{}));
   let first=true;NET.sub(R+'/start',st=>{if(!st)return;if(first&&st.at<NET.now()){first=false;NETR.g=st.g;return}first=false;
     if(st.g>NETR.g&&ROOM.phase==='room'){NETR.g=st.g;NETR.startAt=st.at;NETR.opDone=-1;rStart()}});
   NET.subAdd(R+'/chat',(k,m)=>{if(m&&m.t)chatLine(m.n||'?',String(m.t).slice(0,120))},30);
   NET.subAdd(R+'/ev',(k,e)=>{if(!e||e.u===uid||e.g!==NETR.g||NETR.seen[k])return;NETR.seen[k]=1;netEv(e)})}
 let netMounting=null;
+// stop a game right away (the other player left): no result, no rewards; back in the room
+function abortGame(){running=false;NETR.fin=0;try{src&&src.stop()}catch(e){}camOut();anim=null;queue=[];for(const k in CLASH)delete CLASH[k];
+  $('lane').classList.remove('show');$('getready').classList.remove('show');for(const id of ['jL','jR','pop'])$(id).classList.remove('show');$('result').hidden=true;
+  for(const k in P){P[k].inc=null;P[k].zp=0;P[k].g=0}hud();show('me');popText('50%','เกมจบ','อีกฝ่ายหลุดออก','#fff');
+  ROOM.phase='room';ROOM.me.ready=false;netMe();if(ROOM.owner&&NET.on)NET.update('rooms/'+NETR.rid,{st:'room'});$('stage').classList.add('room-on');$('pad').style.visibility='hidden'}
 async function netPlayers(ps){const uid=NET.uid,k=Object.keys(ps).find(x=>x!==uid),o=k&&ps[k];
   if(o&&!NETR.opUid){NETR.opUid=k;pick.op=CHARS[o.c]?o.c:'hero';PET.op=PETS.includes(o.pet)?o.pet:null;GEAR.op=Array.isArray(o.gear)?o.gear:[];petImg('op');
     ROOM.op={name:String(o.name||'ผู้เล่น').slice(0,16),net:true,ready:!!o.ready,placed:!!o.placed,tier:tierBy(o.tier),pic:typeof o.pic==='string'&&o.pic.startsWith('data:image/')?o.pic:null};
     chatLine('ระบบ',ROOM.op.name+' เข้าห้อง');sfx('GOOD');rPreload();netMounting=rMount();await netMounting;netMounting=null;rPanel('op',ROOM.op);rVis();rDraw();return}
-  if(!o&&NETR.opUid){const n=ROOM.op?ROOM.op.name:'ผู้เล่น';NETR.opUid=null;ROOM.op=null;chatLine('ระบบ',n+' ออกจากห้อง');
-    if(running||NETR.fin===1)finish();pick.op=null;rPanel('op',null);rVis();rDraw();return}
+  if(!o&&NETR.opUid){const n=ROOM.op?ROOM.op.name:'ผู้เล่น',mid=running||NETR.fin===1;NETR.opUid=null;ROOM.op=null;
+    if(mid){abortGame();chatLine('ระบบ',n+' หลุดออกจากห้อง · เกมจบ')}else chatLine('ระบบ',n+' ออกจากห้อง');
+    pick.op=null;rPanel('op',null);rVis();if(ROOM.owner)chatLine('ระบบ','รอผู้เล่นคนใหม่เข้าห้อง');rDraw();return}
   if(!o||netMounting)return;
   const op=ROOM.op;if(!op)return;const pl=!!o.placed!==op.placed;op.ready=!!o.ready;op.placed=!!o.placed;if(pl)rVis();
   if(running||NETR.fin){P.op.zp=o.zp||0;P.op.g=o.g||0;if(typeof o.done==='number')NETR.opDone=o.done;$('zpR').textContent=Math.round(P.op.zp).toLocaleString()}

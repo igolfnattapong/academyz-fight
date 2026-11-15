@@ -62,6 +62,12 @@ button{font-family:inherit}
 @media (prefers-reduced-motion:reduce){.got{animation:none}}
 .toast{position:absolute;left:50%;bottom:calc(4% + 10*var(--u));transform:translateX(-50%);background:rgba(43,46,63,.9);color:#fff;border-radius:calc(4*var(--u));padding:calc(.7*var(--u)) calc(2.6*var(--u));font-size:calc(2.4*var(--u));z-index:10;pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap}
 .toast.on{opacity:1}
+/* ---- settings ---- */
+.setp{width:calc(70*var(--u));max-width:92%;box-sizing:border-box}
+.srow{display:flex;align-items:center;gap:calc(1.6*var(--u));font-size:calc(2.4*var(--u))}
+.srow>span:first-child{flex:1}.srow small{display:block;font-size:calc(1.7*var(--u));color:var(--muted)}
+.srow input[type=range]{width:calc(26*var(--u));accent-color:var(--red)}.srow b{min-width:calc(7*var(--u));text-align:right;font-family:var(--en);font-weight:400}
+.offc{display:flex;align-items:center;gap:calc(1*var(--u))}.srow .btn{font-size:calc(2.2*var(--u));padding:calc(.5*var(--u)) calc(1.6*var(--u))}
 /* ---- loadout bag with real things ---- */
 .botb.live{background:#2fae62!important}#users .w.on{color:#2fae62}
 #s4 .sq.has{border-color:var(--rc)!important;border-style:solid!important;background:#fff!important;display:grid;place-items:center}#s4 .sq img{width:86%;height:86%;object-fit:contain}
@@ -448,7 +454,7 @@ button{font-family:inherit}
     <div class="hub"><div class="campus" id="campus"></div>
       <div class="hname">ACADEMYZ FIGHT</div>
       <div class="htop"><div class="me2"><span class="av2" id="hAv"></span><div><b id="hName"></b><div class="row3"><span id="hLv"></span><span class="xp"><i id="hXp"></i></span><span class="tierb" id="hTier"></span></div></div></div>
-        <div class="wal" id="hWal"></div><span class="sp"></span><button class="btn ghost" id="hOut">ออกจากระบบ</button></div>
+        <div class="wal" id="hWal"></div><span class="sp"></span><button class="btn ghost" id="hSet" aria-label="ตั้งค่า">⚙ ตั้งค่า</button><button class="btn ghost" id="hOut">ออกจากระบบ</button></div>
       <div class="htip" id="hTip"></div>
       <div class="juke" id="juke" role="region" aria-label="เครื่องเล่นเพลง">
         <div class="jeq" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
@@ -519,6 +525,12 @@ button{font-family:inherit}
   </section>
   <div class="dlg" id="dGot" role="dialog" aria-modal="true" aria-labelledby="gotH"><div class="panel"><h2 id="gotH">ได้รับ</h2><div class="gotg" id="gotG"></div><button class="btn" id="gotOk">ตกลง</button></div></div>
   <div class="dlg" id="dItem" role="dialog" aria-modal="true" aria-labelledby="itH"><div class="panel itinfo" id="itInfo"></div></div>
+  <div class="dlg" id="dSet" role="dialog" aria-modal="true" aria-labelledby="setH"><div class="panel setp"><h2 id="setH">SETTINGS</h2>
+    <label class="srow"><span>เพลงตอนสู้</span><input type="range" id="sVolM" min="0" max="100" step="5"><b id="sVolMV"></b></label>
+    <label class="srow"><span>เสียงประกอบ</span><input type="range" id="sVolS" min="0" max="100" step="5"><b id="sVolSV"></b></label>
+    <div class="srow"><span>เปิดเสียงประกอบ</span><button class="btn ghost" id="sSfx" aria-pressed="true"></button></div>
+    <div class="srow"><span>ดีเลย์เสียง<small>กดตรงจังหวะแล้วได้แค่ GOOD ตลอด ลองปรับ</small></span><span class="offc"><button class="btn ghost" id="sOffM">−10</button><b id="sOffV"></b><button class="btn ghost" id="sOffP">+10</button></span></div>
+    <div class="btns"><button class="btn" data-close>ตกลง</button></div></div></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <!-- 4 · lobby -->
@@ -891,6 +903,15 @@ function fitCampus(){const c=$('campus');if(!CAMPUS_ART){c.style.cssText='';retu
     if(q.right>hb.right-6)d=hb.right-6-q.right;if(q.left<hb.left+6)d=hb.left+6-q.left;sg.style.marginLeft=d+'px'}})}
 addEventListener('resize',()=>{if($('app').dataset.s==='sH')fitCampus()});
 const SIL='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#e9e4da"/><circle cx="32" cy="24" r="11" fill="#bdb3a3"/><path d="M10 60c2-13 11-20 22-20s20 7 22 20z" fill="#bdb3a3"/></svg>');
+// settings (the fight screen reads the same values)
+{const rd=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)??'null')??d}catch(e){return d}},wr=(k,v)=>{try{localStorage.setItem(k,typeof v==='string'?v:JSON.stringify(v))}catch(e){}};
+  const draw=()=>{const v=rd('mf_vol',{m:40,s:90}),on=localStorage.getItem('mf_sfx')!=='0',off=+(localStorage.getItem('mf_off')||0);
+    $('sVolM').value=v.m;$('sVolMV').textContent=v.m;$('sVolS').value=v.s;$('sVolSV').textContent=v.s;$('sSfx').textContent=on?'เปิด':'ปิด';$('sSfx').setAttribute('aria-pressed',on);$('sOffV').textContent=off+' ms'};
+  const vol=(k,x)=>{const v=rd('mf_vol',{m:40,s:90});v[k]=+x;wr('mf_vol',v);draw()};
+  $('sVolM').oninput=e=>vol('m',e.target.value);$('sVolS').oninput=e=>vol('s',e.target.value);
+  $('sSfx').onclick=()=>{wr('mf_sfx',localStorage.getItem('mf_sfx')==='0'?'1':'0');draw()};
+  const off=d=>{wr('mf_off',String(Math.max(-300,Math.min(300,+(localStorage.getItem('mf_off')||0)+d))));draw()};$('sOffM').onclick=()=>off(-10);$('sOffP').onclick=()=>off(10);
+  $('hSet').onclick=()=>{draw();$('dSet').classList.add('on');$('sVolM').focus()}}
 $('hOut').onclick=()=>{try{localStorage.removeItem('mf_session')}catch(e){}LT='in';$('lgU').value='';$('lgP').value='';go('s0')};
 // ---------- jukebox on the plaza: background music from the game's songs (keeps playing through the menus) ----------
 const JUKE=SONGS2.map(x=>({...x,file:{wake:'wake.mp3',himma:'himma.mp3'}[x.id],artist:'HEIRS'}));
