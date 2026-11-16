@@ -373,6 +373,7 @@ body{font-family:var(--body);font-size:15px;line-height:1.5;padding:0;overflow:h
 @keyframes gpulse{to{transform:translate(-50%,-50%) scale(1.12)}}
 .mem.okfx .fig{animation:gok .5s ease-out}@keyframes gok{30%{filter:brightness(1.8) drop-shadow(0 0 calc(2*var(--u)) #7cc8ff)}}
 .mem.hitfx .fig{animation:ghit .45s ease-out}@keyframes ghit{0%,100%{translate:0}20%{translate:calc(-1.2*var(--u)) 0;filter:brightness(1.6) sepia(1) hue-rotate(-40deg) saturate(4)}40%{translate:calc(1*var(--u)) 0}60%{translate:calc(-.6*var(--u)) 0}}
+.tp.l{--tc:#c8243a}.tp.r{--tc:#1f74d8}
 </style>
 <div class="stage room-on" id="stage">
   <div class="cam" id="cam"><div id="mems"></div><div class="tint" id="tcold" style="background:rgb(30,90,190)"></div><div class="tint" id="tdim"></div><div class="tint" id="tfl"></div></div>
@@ -564,7 +565,7 @@ const ids=()=>Object.keys(PL);
 const teamOf=t=>ids().filter(i=>PL[i].team===t).sort((a,b)=>PL[a].slot-PL[b].slot);
 const foes=id=>ids().filter(i=>PL[i].team!==PL[id].team);
 const mates=id=>ids().filter(i=>i!==id&&PL[i].team===PL[id].team);
-const sideOf=id=>PL[id].team===MYTEAM?'l':'r';
+const sideOf=id=>PL[id].team==='L'?'l':'r'; // the room is the same for everyone: team L on the left, team R on the right
 const local=id=>!!PL[id]&&(id===ME||(PL[id].bot&&ROOM.owner));
 const live=()=>!!(NETR&&NETR.live);
 const BOTUSED=new Set();
@@ -608,7 +609,7 @@ function memEl(key){let e=document.getElementById('m_'+key);if(e)return e;e=docu
   $('mems').append(e);return e}
 // slot keys: "L0".."R2"; drawn every time the room or the layout changes
 function drawMems(){if(!$('mems'))return;const want=new Set();
-  for(const t of ['L','R'])for(let s=0;s<SIZE;s++){const key=t+s,id=ids().find(i=>PL[i].team===t&&PL[i].slot===s),p=id&&PL[id],side=t===MYTEAM?'l':'r',xy=slotXY(side,s),e=memEl(key);want.add(e.id);
+  for(const t of ['L','R'])for(let s=0;s<SIZE;s++){const key=t+s,id=ids().find(i=>PL[i].team===t&&PL[i].slot===s),p=id&&PL[id],side=t==='L'?'l':'r',xy=slotXY(side,s),e=memEl(key);want.add(e.id);
     e.dataset.id=id||'';e.className='mem '+side+(p?' filled':' empty')+(p&&p.ready&&ROOM.phase!=='play'?' rdy':'')+(id===ME?' me mine':'')+(e.classList.contains('out')?' out':'')+(e.classList.contains('dim')?' dim':'');
     e.style.transform=`translate(${xy.x}px,${xy.y}px) scale(${xy.s})`;e.style.zIndex=xy.z;
     const fig=e.querySelector('.fig'),img=fig.querySelector('img'),sz=p&&figSize(p.c);
@@ -625,14 +626,15 @@ function drawMems(){if(!$('mems'))return;const want=new Set();
 const memOf=id=>{const p=PL[id];return p&&document.getElementById('m_'+p.team+p.slot)};
 
 // ---------- HUD: team panels ----------
-function drawPanels(){for(const [t,box] of [[MYTEAM,'msL'],[MYTEAM==='L'?'R':'L','msR']]){const el=$(box);el.innerHTML='';
+function drawPanels(){$('tpL').querySelector('.tt b').textContent=MYTEAM==='L'?'MY TEAM':'RIVAL';$('tpR').querySelector('.tt b').textContent=MYTEAM==='R'?'MY TEAM':'RIVAL';
+  for(const [t,box] of [['L','msL'],['R','msR']]){const el=$(box);el.innerHTML='';
     for(let s=0;s<SIZE;s++){const id=ids().find(i=>PL[i].team===t&&PL[i].slot===s),p=id&&PL[id],r=document.createElement('div');r.className='mr'+(id===ME?' me':'')+(p?'':' wait');r.dataset.id=id||'';
       r.innerHTML='<i class="av"></i><div class="n"></div><b class="z">0</b><div class="g"><i><b></b></i><i><b></b></i><i><b></b></i></div>';
       const n=r.querySelector('.n');if(p){n.append(p.name);const sm=document.createElement('span');sm.className=p.bot?'botb':'tierb';sm.textContent=p.bot?'BOT':p.tier.name;if(!p.bot)sm.style.setProperty('--tc',p.tier.col);n.append(sm)}else n.textContent='ว่าง';
       r.querySelector('.av').style.backgroundImage=p?`url("${p.bot?ROBO:p.pic||SIL}")`:'none';el.append(r)}}hud()}
 const tz=t=>teamOf(t).reduce((a,i)=>a+PL[i].zp+(PL[i].bonus||0),0);
 function hud(){if(live()&&running)netSync();
-  $('tzL').textContent=Math.round(tz(MYTEAM)).toLocaleString();$('tzR').textContent=Math.round(tz(MYTEAM==='L'?'R':'L')).toLocaleString();
+  $('tzL').textContent=Math.round(tz('L')).toLocaleString();$('tzR').textContent=Math.round(tz('R')).toLocaleString();
   for(const r of document.querySelectorAll('.mr')){const p=PL[r.dataset.id];if(!p)continue;r.querySelector('.z').textContent=Math.round(p.zp+(p.bonus||0)).toLocaleString();
     const seg=r.querySelectorAll('.g i');for(let s=0;s<3;s++){const f=Math.max(0,Math.min(1,(p.g-s*40)/40));seg[s].firstChild.style.width=f*100+'%';seg[s].classList.toggle('full',f>=1)}}}
 function showJudge(id,t,c,kind){const p=PL[id];if(!p)return;if(p.stats&&t in p.stats)p.stats[t]++;const e=memOf(id);if(!e)return;const j=e.querySelector('.jd'),tag=kind==='CT'?'ATTACK!':kind==='SH'?'GUARD':'';
