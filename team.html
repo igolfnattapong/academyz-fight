@@ -790,12 +790,21 @@ function frame(){requestAnimationFrame(frame);animWatch();if(!running||paused)re
   if(t>dur-.3)finish()}
 async function loadAll(){if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();if(!SONG)setSong(await (await fetch(SONG_URL)).json());
   if(!buf)buf=await ac.decodeAudioData(await (await fetch('songs/'+SONG.file)).arrayBuffer());await loadCues();await loadGameSfx();await loadSamples([...new Set(ids().map(i=>PL[i].c))])}
-async function startGame(){try{await loadAll();await needEngines()}catch(err){chatLine('ระบบ','โหลดไม่สำเร็จ: '+err.message);return}
+async function startGame(){const gr=$('getready');if(!buf)gr.textContent='กำลังโหลดเพลง…';
+  try{await loadAll()}catch(err){chatLine('ระบบ','โหลดไม่สำเร็จ: '+err.message);return}gr.textContent='GET READY !';
+  needEngines(); // the fighters' moves keep loading in the background: the song never waits for them
   for(const id of ids()){const p=PL[id],F=FX.build(p.gear),b=CHARS[p.c].st;Object.assign(p,{inc:[],combo:0,fx:F,st:b.map((v,j)=>v+F.add[j]+v*F.pct/100),tk:{},done:-1,stats:{PERFECT:0,GREAT:0,GOOD:0,BAD:0,MISS:0,atk:0,hit:0,guard:0}});
     p.zp=0;p.bonus=0;p.g=local(id)&&F.startGauge?C.full*F.startGauge/100:0}
   clearAnims();botQ=[];for(const k in ATK)delete ATK[k];setIdx=-1;cur=null;$('arrows').innerHTML='';$('result').hidden=true;$('pad').style.visibility='';drawMems();hud();
   src=ac.createBufferSource();src.buffer=buf;if(!musicBus){musicBus=ac.createGain();musicBus.connect(ac.destination)}musicBus.gain.value=VOL.m/100;src.playbackRate.value=RATE;src.connect(musicBus);
-  t0=ac.currentTime+(NETR&&NETR.startAt?Math.max(.15,(NETR.startAt-NET.now())/1000):.15);if(NETR)NETR.startAt=0;src.start(t0);running=true;paused=false}
+  // a browser may keep the sound off until this screen is tapped (the owner tapped "start", the others didn't): ask for a tap, then join in
+  if(ac.state!=='running'){try{await ac.resume()}catch(e){}}
+  if(ac.state!=='running'){const gr=$('getready');gr.textContent='แตะจอ / กดปุ่มใดก็ได้ เพื่อเริ่มเพลง';gr.classList.add('show');
+    await new Promise(r=>{const f=()=>{ac.resume().then(()=>{if(ac.state==='running'){removeEventListener('pointerdown',f,true);removeEventListener('keydown',f,true);r()}}).catch(()=>{})};addEventListener('pointerdown',f,true);addEventListener('keydown',f,true)});
+    gr.textContent='GET READY !'}
+  // everyone's song starts at the shared start time; a screen that finished loading late joins in at the right point of the song
+  const d=NETR&&NETR.startAt?(NETR.startAt-NET.now())/1000:.15;if(NETR)NETR.startAt=0;t0=ac.currentTime+d;
+  if(d>=.05)src.start(t0);else src.start(0,Math.min(buf.duration-1,(-d)*RATE));running=true;paused=false}
 function finish(){
   // online: send the final scores of my players and wait (briefly) for everyone else's, so all screens show the same result
   if(live()&&!NETR.fin){NETR.fin=1;running=false;try{src&&src.stop()}catch(e){}$('lane').classList.remove('show');
