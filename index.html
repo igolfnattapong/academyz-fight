@@ -444,7 +444,7 @@ button{font-family:inherit}
         <div class="err" id="lgErr" aria-live="polite"></div>
         <button class="btn go" id="lgGo">เข้าสู่ระบบ</button>
         <button type="button" class="guest" id="lgGuest">เล่นแบบไม่สมัคร (Guest)</button>
-        <div class="test">ช่วงทดสอบ: บัญชีเก็บไว้ในเครื่องนี้เท่านั้น จะย้ายขึ้นเซิร์ฟเวอร์ตอนเปิดออนไลน์</div>
+        <div class="test">บัญชีเก็บบนเซิร์ฟเวอร์ ล็อกอินได้ทุกเครื่อง · Guest เก็บไว้ในเครื่องนี้เท่านั้น</div>
       </form>
     </div>
   </section>
@@ -583,6 +583,7 @@ button{font-family:inherit}
 <script src="inv.js"></script>
 <script src="fx.js"></script>
 <script src="net.js"></script>
+<script src="cloud.js"></script>
 <script src="uisfx.js"></script>
 <script src="chibi.js"></script>
 <script>
@@ -769,7 +770,8 @@ function drawLobby(){$('pname').value=pname;CHIBI.set($('lChibi'),me);
   for(const el of $('rlist').querySelectorAll('.room.wait')){const r=[...NROOMS,...ROOMS].find(x=>String(x.no)===el.dataset.no);
     el.onclick=e=>{if(e.target.closest('.btn'))return join(r);selRoom=r.no;drawLobby()};el.ondblclick=()=>join(r);el.onkeydown=e=>{if(e.key==='Enter')join(r)}}}
 const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
-$('q').oninput=drawLobby;$('pname').onchange=()=>{pname=$('pname').value.trim()||'ผู้เล่น';save();if(NET.on)NET.update('online/'+NET.uid,{name:pname});drawLobby()};
+$('q').oninput=drawLobby;$('pname').onchange=()=>{if(NET.acct){$('pname').value=pname;return} // an account keeps its registered name
+  pname=$('pname').value.trim()||'ผู้เล่น';save();if(NET.on)NET.update('online/'+NET.uid,{name:pname});drawLobby()};
 function startFight(op,opn){save();try{const p=JSON.parse(localStorage.getItem('mf_pick')||'{}');p.me=me;p.op=op;localStorage.setItem('mf_pick',JSON.stringify(p))}catch(e){}
   location.href='battle.html?me='+me+'&op='+op+'&auto=1'+(opn?'&opn='+encodeURIComponent(opn):'')}
 // ---------- maps / songs (one of each so far; the rest are placeholders) ----------
@@ -845,14 +847,25 @@ for(const t of document.querySelectorAll('[data-lt]'))t.onclick=()=>{LT=t.datase
 $('lgFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const cv=document.createElement('canvas');cv.width=cv.height=160;const s2=Math.min(im.width,im.height);
   cv.getContext('2d').drawImage(im,(im.width-s2)/2,(im.height-s2)/2,s2,s2,0,0,160,160);newPic=cv.toDataURL('image/jpeg',.85);$('lgPic').style.backgroundImage=`url(${newPic})`;URL.revokeObjectURL(im.src)};im.src=URL.createObjectURL(f)};
 function signIn(name,pic){pname=name;try{localStorage.setItem('mf_name',name);localStorage.setItem('mf_session',name);if(pic)localStorage.setItem('mf_avatar',pic);else localStorage.removeItem('mf_avatar')}catch(e){}go('sH')}
-$('fLog').onsubmit=async e=>{e.preventDefault();const u=$('lgU').value.trim(),pw=$('lgP').value,err=t=>{$('lgErr').textContent=t;UISFX.play('lock')};
+// accounts live on the server (cloud.js); an account made on this device during the test period moves up on its first sign-in
+const AUTHERR=e=>{const c=e&&e.code||e&&e.message||'';return c==='offline'?'ต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง':c==='taken'||c==='auth/email-already-in-use'?'ชื่อนี้มีคนใช้แล้ว':
+  c==='auth/too-many-requests'?'ลองผิดหลายครั้งเกินไป รอสักครู่แล้วลองใหม่':c==='auth/network-request-failed'?'เน็ตหลุด ลองใหม่อีกครั้ง':
+  c==='auth/operation-not-allowed'?'ระบบบัญชียังไม่เปิดใน Firebase (Email/Password)':'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูก'};
+let lgBusy=false;
+$('fLog').onsubmit=async e=>{e.preventDefault();if(lgBusy)return;const u=$('lgU').value.trim(),pw=$('lgP').value,err=t=>{$('lgErr').textContent=t;UISFX.play('lock')};
   if(!/^[\p{L}\p{M}\p{N}_ .-]{3,16}$/u.test(u))return err('ชื่อผู้ใช้ 3–16 ตัว (ตัวอักษร ตัวเลข _ . -)');
   if(pw.length<4)return err('รหัสผ่านอย่างน้อย 4 ตัว');
-  const A=accs(),key=u.toLowerCase(),h=await hashPw(u,pw);
-  if(LT==='up'){if(A[key])return err('ชื่อนี้มีคนใช้แล้ว');if(pw!==$('lgP2').value)return err('รหัสผ่านไม่ตรงกัน');
-    A[key]={name:u,pw:h,pic:newPic||null,at:Date.now()};try{localStorage.setItem(ACC_K,JSON.stringify(A))}catch(e){return err('บันทึกไม่ได้ (พื้นที่เครื่องเต็ม?)')}
-    return signIn(u,newPic)}
-  if(!A[key]||A[key].pw!==h)return err('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูก');signIn(A[key].name,A[key].pic)};
+  if(LT==='up'&&pw!==$('lgP2').value)return err('รหัสผ่านไม่ตรงกัน');
+  const btn=$('lgGo'),label=btn.textContent;lgBusy=true;btn.disabled=true;btn.textContent='กำลังเชื่อมต่อ…';$('lgErr').textContent='';
+  const done=()=>{lgBusy=false;btn.disabled=false;btn.textContent=label};
+  try{
+    if(LT==='up'){await CLOUD.signUp(u,pw,newPic);pname=u;done();go('sH');return}
+    try{await CLOUD.signIn(u,pw)}
+    catch(e1){const A=accs(),L=A[u.toLowerCase()];
+      if(!(L&&L.pw===await hashPw(u,pw)&&/invalid-credential|user-not-found|wrong-password/.test(e1.code||'')))throw e1;
+      await CLOUD.signUp(L.name,pw,L.pic)} // the old on-device account becomes an online one (with this device's progress)
+    location.replace(location.pathname)} // reload as the account
+  catch(e2){done();err(AUTHERR(e2))}};
 $('lgGuest').onclick=()=>signIn('Guest'+Math.floor(1000+Math.random()*9000),null);
 // ---------- H · academy hub ----------
 // one campus picture; each building is a hotspot at x/y (% of the picture, the bottom-centre of the building) with a size.
@@ -912,7 +925,7 @@ const SIL='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.or
   $('sSfx').onclick=()=>{wr('mf_sfx',localStorage.getItem('mf_sfx')==='0'?'1':'0');draw()};
   const off=d=>{wr('mf_off',String(Math.max(-300,Math.min(300,+(localStorage.getItem('mf_off')||0)+d))));draw()};$('sOffM').onclick=()=>off(-10);$('sOffP').onclick=()=>off(10);
   $('hSet').onclick=()=>{draw();$('dSet').classList.add('on');$('sVolM').focus()}}
-$('hOut').onclick=()=>{try{localStorage.removeItem('mf_session')}catch(e){}LT='in';$('lgU').value='';$('lgP').value='';go('s0')};
+$('hOut').onclick=async()=>{if(NET.acct){await CLOUD.signOut();location.replace(location.pathname);return}try{localStorage.removeItem('mf_session')}catch(e){}LT='in';$('lgU').value='';$('lgP').value='';go('s0')};
 // ---------- jukebox on the plaza: background music from the game's songs (keeps playing through the menus) ----------
 const JUKE=SONGS2.map(x=>({...x,file:{wake:'wake.mp3',himma:'himma.mp3'}[x.id],artist:'HEIRS'}));
 const jA=new Audio();let jI=0,jVol=40;try{const v=JSON.parse(localStorage.getItem('mf_juke')||'null');if(v){jI=Math.min(JUKE.length-1,v.i|0);jVol=v.v??40}}catch(e){}
@@ -949,5 +962,7 @@ if(location.hash==='#lobby'){MODE='normal';go('s4')}
 if(location.hash==='#ranked'){MODE='ranked';go('s5')}
 window.__ui={go}; // test hook
 NET.visit(pname); // stats: who came today
+// accounts: newer progress on the server (played on another device) → reload with it; names can't be changed
+CLOUD.boot().then(re=>{if(re){location.reload();return}if(NET.acct){$('pname').readOnly=true;$('pname').title='ชื่อบัญชีเปลี่ยนไม่ได้'}});
 })();
 </script>

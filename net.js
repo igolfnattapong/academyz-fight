@@ -21,11 +21,20 @@ const NET = (() => {
   async function fire() {
     await load(CDN('app')); await Promise.all([load(CDN('auth')), load(CDN('database'))]);
     const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(CFG);
-    const cred = await firebase.auth(app).signInAnonymously(); const db = firebase.database(app);
+    // keep whoever is signed in on this browser (an account, or the guest's anonymous id); a first visit signs in anonymously
+    const auth = firebase.auth(app);
+    let user = await new Promise(ok => { const un = auth.onAuthStateChanged(u => { un(); ok(u) }) });
+    if (!user) user = (await auth.signInAnonymously()).user;
+    const db = firebase.database(app);
     db.ref('.info/serverTimeOffset').on('value', s => { offset = s.val() || 0 });
     const r = p => db.ref(p);
     return {
-      uid: cred.user.uid,
+      uid: user.uid,
+      get acct() { return !!(auth.currentUser && !auth.currentUser.isAnonymous) },
+      // accounts: sign-up turns this browser's anonymous id into the account (progress carries over)
+      up: (email, pw) => auth.currentUser.linkWithCredential(firebase.auth.EmailAuthProvider.credential(email, pw)).then(c => c.user.uid),
+      in: (email, pw) => auth.signInWithEmailAndPassword(email, pw).then(c => c.user.uid),
+      out: () => auth.signOut(),
       set: (p, v) => r(p).set(v), update: (p, v) => r(p).update(v), remove: p => r(p).remove(), push: (p, v) => { const k = r(p).push(); k.set(v); return k.key },
       get: p => r(p).once('value').then(s => s.val()),
       last: (p, n) => r(p).orderByKey().limitToLast(n).once('value').then(s => s.val()),
@@ -50,8 +59,14 @@ const NET = (() => {
     const write = f => { const t = read(); f(t); localStorage.setItem(K, JSON.stringify(t)); bc && bc.postMessage(1); setTimeout(fireAll, 0) };
     if (bc) bc.onmessage = fireAll; addEventListener('storage', e => { if (e.key === K) fireAll() });
     const disc = []; addEventListener('pagehide', () => write(t => { for (const [p, v] of disc) { if (v === null) put(t, p, null); else for (const k in v) put(t, p + '/' + k, v[k]) } }));
+    const AK = 'mf_netfake_auth', au = () => { try { return JSON.parse(localStorage.getItem(AK) || '{}') } catch (e) { return {} } };
+    const err = code => Promise.reject(Object.assign(new Error(code), { code }));
     return {
       uid: me,
+      get acct() { return sessionStorage.getItem('mf_netfake_acct') === '1' },
+      up(email, pw) { const A = au(); if (A[email]) return err('auth/email-already-in-use'); A[email] = { pw, uid: me }; localStorage.setItem(AK, JSON.stringify(A)); sessionStorage.setItem('mf_netfake_acct', '1'); return Promise.resolve(me) },
+      in(email, pw) { const a = au()[email]; if (!a || a.pw !== pw) return err('auth/invalid-credential'); sessionStorage.setItem('mf_netfake_uid', a.uid); sessionStorage.setItem('mf_netfake_acct', '1'); return Promise.resolve(a.uid) },
+      out() { sessionStorage.removeItem('mf_netfake_uid'); sessionStorage.removeItem('mf_netfake_acct'); return Promise.resolve() },
       set: (p, v) => Promise.resolve(write(t => put(t, p, JSON.parse(JSON.stringify(v))))),
       update: (p, v) => Promise.resolve(write(t => { for (const k in v) put(t, p + '/' + k, v[k] === undefined ? null : JSON.parse(JSON.stringify(v[k]))) })),
       remove: p => Promise.resolve(write(t => put(t, p, null))),
@@ -80,7 +95,8 @@ const NET = (() => {
   const game = (rec, key) => init().then(u => { if (!u) return; const p = 'stats/d/' + day() + '/g/', v = { ...rec, u, at: Date.now() + offset };
     (key ? api.set(p + key + '_' + u, v) : Promise.resolve(api.push(p, v))).catch(() => {}) });
   return {
-    init, get on() { return !!api }, get uid() { return uid }, get mock() { return mock },
+    init, get on() { return !!api }, get uid() { return uid }, get mock() { return mock }, get acct() { return !!(api && api.acct) },
+    auth: { up: (e, p) => api.up(e, p), in: (e, p) => api.in(e, p), out: () => api ? api.out() : Promise.resolve() },
     now: () => Date.now() + offset,
     visit, game, day,
     set: call('set'), update: call('update'), remove: call('remove'), get: call('get'), last: call('last'), onDisc: call('onDisc'), cancelDisc: call('cancelDisc'), tx: call('tx'),
