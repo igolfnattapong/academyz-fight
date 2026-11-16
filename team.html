@@ -788,7 +788,7 @@ function finish(){
   if(live()&&!NETR.fin){NETR.fin=1;running=false;try{src&&src.stop()}catch(e){}$('lane').classList.remove('show');
     for(const id of ids())if(local(id)){PL[id].done=NETR.g;NET.update('rooms/'+NETR.rid+'/p/'+id,{zp:Math.round(PL[id].zp),g:Math.round(PL[id].g),bonus:Math.round(PL[id].bonus||0),stats:PL[id].stats,done:NETR.g})}
     const t=Date.now(),w=()=>{if(ids().every(i=>PL[i].done===NETR.g)||Date.now()-t>4000)finish();else setTimeout(w,150)};w();return}
-  running=false;camOut();$('lane').classList.remove('show');try{src&&src.stop()}catch(e){}
+  running=false;clearAnims();$('lane').classList.remove('show');try{src&&src.stop()}catch(e){}
   const other=MYTEAM==='L'?'R':'L',a=Math.round(tz(MYTEAM)),b=Math.round(tz(other)),res=a>b?'win':a<b?'lose':'draw';
   const vsBot=foes(ME).every(i=>PL[i].bot);
   NET.game({m:'team'+SIZE,c:PL[ME].c,r:res,zp:Math.round(PL[ME].zp)},live()?NETR.rid+'_'+NETR.g:null);
@@ -827,7 +827,10 @@ function removeBot(id){if(!ROOM.owner||!PL[id]||!PL[id].bot)return;if(live())NET
 async function rPreload(){try{await loadAll()}catch(e){}}
 const rWake=()=>{try{ac&&ac.resume()}catch(e){}};
 function rStart(){ROOM.phase='play';here('play');$('tut').hidden=true;rWake();$('getready').classList.add('show');$('stage').classList.remove('room-on');rDraw();startGame()}
-function rBack(){ROOM.phase='room';here('room');$('stage').classList.add('room-on');$('pad').style.visibility='hidden';
+// clear whatever attack was still playing or waiting (the song can end in the middle of one)
+function clearAnims(){for(const k in FR){FR[k].style.transform='';try{FR[k].contentWindow.postMessage({cmd:'speed',v:1},'*')}catch(e){}}anim=null;queue=[];for(const k in CLASH)delete CLASH[k];show(null);camOut();
+  for(const t of ['tcold','tdim','tfl'])$(t).style.opacity=0;for(const e of $('mems').children)e.classList.remove('out','dim','guarding','okfx','hitfx')}
+function rBack(){ROOM.phase='room';clearAnims();here('room');$('stage').classList.add('room-on');$('pad').style.visibility='hidden';
   for(const id of ids()){const p=PL[id];p.inc=[];if(local(id)){p.zp=0;p.g=0;p.bonus=0}if(!p.bot&&id===ME)p.ready=false}
   if(live()){NETR.fin=0;netMe();if(ROOM.owner)NET.update('rooms/'+NETR.rid,{st:'room'})}hud();rDraw()}
 function abortGame(why){running=false;if(NETR)NETR.fin=0;try{src&&src.stop()}catch(e){}camOut();anim=null;queue=[];for(const k in CLASH)delete CLASH[k];show(null);for(const t of ['tcold','tdim','tfl'])$(t).style.opacity=0;
