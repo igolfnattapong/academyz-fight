@@ -677,7 +677,7 @@ function busy(id){if(PL[id].inc.length)return true;for(const k in ATK){const a=A
   for(const k in CLASH)for(const a in CLASH[k])if(a===id||CLASH[k][a].tgt===id)return true;return false}
 const winOf=(id,si)=>PL[id].inc.filter(x=>inWin(x,si));
 function resolveSet(id,n,m,kind,si,rb){const p=PL[id],[atk,de,sp]=p.st,base=n*m,F=p.fx,W=winOf(id,si);
-  if(kind==='CT'&&W.length)kind='SP'; // no counter-attack while being hit: only guard or collect
+  if(kind==='CT'&&p.inc.length)kind='SP'; // no attacking while being hit (from the moment the attack lands on you until it is settled): only guard or collect
   const z=zpOf(id,n,m,rb);p.zp+=z;if(F.teamShare)p.bonus+=z*F.teamShare/100*mates(id).length;
   for(const inc of W){if(kind==='SH')inc.guard+=base*C.dc*mult(de)*GUARD_K;inc.left--}
   const lvl=Math.floor(p.g/40),fs=foes(id).filter(x=>!busy(x));
@@ -731,7 +731,8 @@ function launch(aid,tid,dmg,lvl,si){const a={who:aid,tgt:tid,dmg,lvl,key:aid+'_'
 // every attack plays at once on the attacker's own engine, from where the attacker stands to where the target stands
 const ANIMS={}; // attacker id → attack on screen
 function play(a){const A=PL[a.who],T=PL[a.tgt],f=FR[a.who],sd=sideOf(a.who);
-  a.inc.from=Math.max(0,setIdx)+1; // the target can guard from the next row
+  // the target can guard from this row if its press is still ahead, else from the next one
+  {const si=Math.max(0,setIdx);a.inc.from=now()<beatT(si*SET_BEATS+CHECK_BEAT)-.25?si:si+1}
   if(!f){a.hit=true;a.cut=true;deliver(a);a.over=true;return}
   if(ANIMS[a.who])animDone(ANIMS[a.who]);ANIMS[a.who]=a;
   // the target is still on screen in its own attack (waiting for its target's guard): that engine stops drawing it while this one does
@@ -761,7 +762,7 @@ addEventListener('message',e=>{const d=e.data||{};let a=null;for(const k in ANIM
 let botQ=[];
 function botSet(i){if(i<1)return;for(const id of ids()){if(!PL[id].bot||!local(id))continue;const r=Math.random(),m=r<.33?1:r<.66?.8:r<.84?.6:r<.93?.3:0;botQ.push({id,i,m,n:rowLen(i),t:beatT(i*SET_BEATS+CHECK_BEAT)+Math.random()*.04})}botQ.sort((a,b)=>a.t-b.t)}
 function botTick(t){while(botQ.length&&t>=botQ[0].t){const {id,i,m,n}=botQ.shift(),p=PL[id];if(!p)continue;let kind='SP';
-    if(winOf(id,i).length){if(Math.random()<.85)kind='SH'}else if(p.g>=40){const lv=Math.floor(p.g/40);if(Math.random()<(lv>=3?1:lv===2?.35:.2))kind='CT'}
+    if(winOf(id,i).length){if(Math.random()<.85)kind='SH'}else if(p.g>=40&&!p.inc.length){const lv=Math.floor(p.g/40);if(Math.random()<(lv>=3?1:lv===2?.35:.2))kind='CT'}
     resolveSet(id,n,m,kind,i,rbFlags(id,n));showJudge(id,JN(m),null,kind);otherSfx(JN(m))}}
 
 // ---------- my rows ----------
@@ -769,7 +770,7 @@ function newSet(i){$('lane').classList.add('show');$('getready').classList.remov
   cur={i,seq:randSeq(n),rb:rbFlags(ME,n),pos:0,done:false,start:beatT(i*SET_BEATS),check:beatT(i*SET_BEATS+CHECK_BEAT),end:beatT((i+1)*SET_BEATS)};drawArrows();botSet(i)}
 function act(kind){if(!cur||cur.done)return;const t=now(),dt=Math.abs(t-cur.check);if(dt>.35)return;cur.done=true;
   let j=['MISS',0,'#ff6b7a'];if(cur.pos>=cur.seq.length)for(const [w,n,m,c] of JW)if(dt<=w*RATE){j=[n,m,c];break}
-  const k2=kind==='CT'&&winOf(ME,cur.i).length?'SP':kind;resolveSet(ME,cur.seq.length,j[1],k2,cur.i,cur.rb);showJudge(ME,j[0],j[2],k2);sfx(j[0])}
+  const k2=kind==='CT'&&PL[ME].inc.length?'SP':kind;resolveSet(ME,cur.seq.length,j[1],k2,cur.i,cur.rb);showJudge(ME,j[0],j[2],k2);sfx(j[0])}
 // ---------- input ----------
 const KM={ArrowLeft:'L',ArrowUp:'U',ArrowRight:'R',ArrowDown:'D',' ':'SP',Spacebar:'SP',Control:'CT',Shift:'SH'};
 addEventListener('keydown',e=>{if(e.target===$('chatIn')){if(e.key==='Escape')$('chatIn').blur();return}
@@ -784,7 +785,7 @@ function frame(){requestAnimationFrame(frame);animWatch();if(!running||paused)re
   $('song').style.width=Math.min(100,t/dur*100)+'%';
   const i=Math.floor((t-beatT(0))/(SET_BEATS*SPB));
   if(i>=0&&i!==setIdx&&beatT((i+1)*SET_BEATS)<dur-.5){if(cur&&!cur.done){cur.done=true;resolveSet(ME,cur.seq.length,0,'SP',cur.i,cur.rb);showJudge(ME,'MISS');sfx('MISS')}setIdx=i;newSet(i)}
-  $('lane').classList.toggle('hitme',!!(cur&&PL[ME]&&winOf(ME,cur.i).length));
+  $('lane').classList.toggle('hitme',!!(PL[ME]&&PL[ME].inc.length)); // shown as soon as an attack on me is on its way
   if(cur){const u=(t-cur.start)/(cur.end-cur.start),x=u*100/((CHECK_BEAT/SET_BEATS)/.85),mk=$('mark');mk.style.left=Math.max(0,Math.min(100,x))+'%';mk.style.opacity=x>100?Math.max(0,1-(x-100)/4):1}
   if(t>dur-.3)finish()}
 async function loadAll(){if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();if(!SONG)setSong(await (await fetch(SONG_URL)).json());
