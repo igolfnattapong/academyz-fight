@@ -286,7 +286,7 @@ function drawR(){const c=girl.c,p=(RA[TN]||[])[R.pose],img=RP[R.pose];if(!p||!im
 function rStar(x,y,r){ctx.save();ctx.translate(x,y);ctx.rotate(clock*3);ctx.fillStyle='#ffe066';ctx.strokeStyle='#0b0c14';ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,rr=i%2?r*.45:r;ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr)}ctx.closePath();ctx.stroke();ctx.fill();ctx.restore()}
 const _render=render;render=function(){_render();const dt=Math.max(0,clock-R.lc);R.lc=clock;
   for(let i=R.tm.length-1;i>=0;i--)if(clock>=R.tm[i].t){const e=R.tm[i];R.tm.splice(i,1);e.fn()}
-  const k=cv.width/W;ctx.setTransform(k,0,0,k,0,0);ctx.translate(W/2,H/2+ZY);ctx.scale(ZOOM,ZOOM);ctx.translate(-W/2,-H/2);ctx.globalCompositeOperation='lighter';
+  const k=cv.width/W;ctx.setTransform(k,0,0,k,0,0);ctx.translate(W/2,H/2+ZY);ctx.scale(ZOOM,ZOOM);ctx.translate(-W/2,-H/2);if(TGY||TGS!==1){ctx.translate(girl.x,FLOOR+TGY);ctx.scale(TGS,TGS);ctx.translate(-girl.x,-FLOOR)}ctx.globalCompositeOperation='lighter';
   if(R.sig){let f;if(R.sig.st==='fade')f=8+Math.floor(clamp((clock-R.sig.t1)/1,0,.999)*8);else{const u=(clock-R.sig.t0)/.35;f=u<1?Math.floor(u*8):(7+(Math.floor(clock*12)%2))}
     const img=SG[f],m=RA._sig[f];if(img&&img.complete){ctx.save();ctx.translate(sigX(),FLOOR-140);ctx.scale(-.88,.88);ctx.drawImage(img,-m.w/2,-m.h/2);ctx.globalAlpha=.4;ctx.drawImage(img,-m.w/2,-m.h/2);ctx.restore()}}
   for(const s of R.shards){s.t+=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vy+=700*dt;s.r+=s.vr*dt;const u=s.t/s.l;ctx.globalAlpha=Math.max(0,1-u);ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.r);
@@ -301,7 +301,7 @@ const _render=render;render=function(){_render();const dt=Math.max(0,clock-R.lc)
   if(R.asked&&!R.resolved&&clock-R.askT>20)rResolve(0);
   if(R.playing&&clock>busyUntil+.2){if(!R.resolved){if(!R.asked){R.asked=true;R.askT=clock;parent.postMessage({ev:'impact'},'*')}}else if(R.pose<0&&!R.tm.length){R.playing=false;parent.postMessage({ev:'done'},'*')}}};
 addEventListener('message',e=>{const d=e.data||{};if(d.cmd==='tgt'&&d.t&&CH[d.t]&&d.t!==TN){girl=actor(d.t,girl.x,-1);TN=d.t;RP=RPof(TN)} /* team mode: one engine attacks any target */
-  if(d.cmd==='pos'){if(isFinite(d.ax))hero.x=+d.ax;if(isFinite(d.tx))girl.x=+d.tx} /* team mode: attacker and target fight from where they stand */
+  if(d.cmd==='pos'){if(isFinite(d.ax))hero.x=+d.ax;if(isFinite(d.tx))girl.x=+d.tx;TGY=isFinite(d.ty)?+d.ty:0;TGS=isFinite(d.ts)?+d.ts:1} /* team mode: attacker and target fight from where they stand */
   if(d.cmd==='vis'){for(const k of ['a','t'])if(k in d&&d[k]!==VIS[k]){VIS[k]=!!d[k];VIS['t'+k]=clock}}if(d.cmd==='play'){Object.assign(R,{pose:-1,dx:0,sig:null,shards:[],stars:0,mode:'guard',started:false,resolved:false,asked:false,tm:[],tw:null,playing:true,parts:[],rings:[],pt:0,endSent:false});go(3);rStart()}
   if(d.cmd==='result'&&R.asked&&!R.resolved){R.mode=d.res;rResolve(0)}
   if(d.cmd==='speed')scale=d.v;});
@@ -322,6 +322,9 @@ if(typeof bolt==='function'){const _b=bolt;bolt=function(...a){S('zap');return _
 if(typeof sendCurse==='function'){const _c=sendCurse;sendCurse=function(...a){S('cast');return _c(...a)}}
 
 if(NOBG){let _ld=-1,_lf=-1,_lc=-1;const _r2=render;render=function(){_r2();const d=Math.round(dim.v*50)/50,f=Math.round(Math.min(.5,flash)*50)/50,c=typeof cold==='undefined'?0:Math.round(cold.v*.18*100)/100;if(d!==_ld||f!==_lf||c!==_lc){_ld=d;_lf=f;_lc=c;parent.postMessage({ev:'tint',dim:d,flash:f,cold:c,col:'200,160,255'},'*')}}}
+
+// team mode: the target may stand deeper in the room (higher up, smaller) than the attacker's floor line
+let TGY=0,TGS=1;{const _d3=drawIdle;drawIdle=function(o){if(o!==girl||(!TGY&&TGS===1))return _d3(o);ctx.save();ctx.translate(girl.x,FLOOR+TGY);ctx.scale(TGS,TGS);ctx.translate(-girl.x,-FLOOR);_d3(o);ctx.restore()}}
 let last=performance.now();
 function frame(now){const dt=Math.min(.05,Math.max(0,(now-last)/1000))*scale;last=now;update(dt);render();requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
