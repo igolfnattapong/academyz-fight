@@ -375,6 +375,7 @@ body{font-family:var(--body);font-size:15px;line-height:1.5;padding:0;overflow:h
 .mem.hitfx .fig{animation:ghit .45s ease-out}@keyframes ghit{0%,100%{translate:0}20%{translate:calc(-1.2*var(--u)) 0;filter:brightness(1.6) sepia(1) hue-rotate(-40deg) saturate(4)}40%{translate:calc(1*var(--u)) 0}60%{translate:calc(-.6*var(--u)) 0}}
 .tp.l{--tc:#c8243a}.tp.r{--tc:#1f74d8}
 </style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="rbg" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#ff4d6a"/><stop offset=".25" stop-color="#ffd23f"/><stop offset=".5" stop-color="#5dff6e"/><stop offset=".75" stop-color="#4fd1ff"/><stop offset="1" stop-color="#c58bff"/></linearGradient></defs></svg>
 <div class="stage room-on" id="stage">
   <div class="cam" id="cam"><div id="mems"></div><div class="tint" id="tcold" style="background:rgb(30,90,190)"></div><div class="tint" id="tdim"></div><div class="tint" id="tfl"></div></div>
   <div class="hud">
@@ -949,8 +950,8 @@ let HERE='room';function here(w){HERE=w;NET.init().then(u=>{if(!u)return;NET.set
 // ---------- open the room ----------
 here('room');setTimeout(()=>here(HERE),2500);setInterval(()=>here(HERE),20000);
 $('pad').style.visibility='hidden';$('rload').hidden=false;
-{const i=$('rinfo');const b=document.createElement('b');b.textContent='ห้อง '+ROOM.no+' · '+ROOM.name+' · '+SIZE+'v'+SIZE+(ROOM.lock?' 🔒':'');b.title='build 16/11 22:46';i.append(b,document.createElement('br'));
-  i.insertAdjacentHTML('beforeend','Scene <span></span><br>Music <span></span><br><small style="opacity:.6">เวอร์ชัน 16/11 22:46</small>');const sp=i.querySelectorAll('span');sp[0].textContent=ROOM.map;sp[1].textContent='…';fetch(SONG_URL).then(r=>r.json()).then(j=>{sp[1].textContent=j.title+(j.artist?' : '+j.artist:'')+' · bpm='+Math.round(j.bpm)}).catch(()=>{})}
+{const i=$('rinfo');const b=document.createElement('b');b.textContent='ห้อง '+ROOM.no+' · '+ROOM.name+' · '+SIZE+'v'+SIZE+(ROOM.lock?' 🔒':'');b.title='build 16/11 22:51';i.append(b,document.createElement('br'));
+  i.insertAdjacentHTML('beforeend','Scene <span></span><br>Music <span></span><br><small style="opacity:.6">เวอร์ชัน 16/11 22:51</small>');const sp=i.querySelectorAll('span');sp[0].textContent=ROOM.map;sp[1].textContent='…';fetch(SONG_URL).then(r=>r.json()).then(j=>{sp[1].textContent=j.title+(j.artist?' : '+j.artist:'')+' · bpm='+Math.round(j.bpm)}).catch(()=>{})}
 const bgReady=new Promise(r=>{const im=new Image();im.onload=im.onerror=r;im.src='bg/practice_room.jpg'});
 rPreload();addEventListener('pointerdown',rWake,{capture:true});addEventListener('keydown',rWake,{capture:true});
 setTimeout(()=>$('rload').classList.add('grid'),500);
