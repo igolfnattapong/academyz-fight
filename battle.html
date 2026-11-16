@@ -621,6 +621,7 @@ function finish(){
     NET.update(NETR.me,{zp:Math.round(P.me.zp),g:P.me.g,done:NETR.g});const t=Date.now(),w=()=>{if(NETR.opDone===NETR.g||!NETR.opUid||Date.now()-t>4000)finish();else setTimeout(w,150)};w();return}
   running=false;camOut();$('lane').classList.remove('show');$('gear').hidden=true;try{src&&src.stop()}catch(e){}
   const a=Math.round(P.me.zp),b=Math.round(P.op.zp),res=a>b?'win':a<b?'lose':'draw';
+  {const pvp=!!(NETR&&NETR.opUid&&!(ROOM&&ROOM.op&&ROOM.op.bot));NET.game({m:pvp?'pvp':RANKED?'ranked':'bot',c:pick.me,o:pick.op,r:res,zp:a},pvp?NETR.rid+'_'+NETR.g:null)} // stats
   $('rT').textContent=res==='win'?'YOU WIN':res==='lose'?'YOU LOSE':'DRAW';$('rT').style.setProperty('--rc',res==='win'?'#ffd23f':res==='lose'?'#7cc8ff':'#fff');
   $('rT').style.animation='none';void $('rT').offsetWidth;$('rT').style.animation='';
   const col=(side,who,zp,won)=>{const S=STATS[side];$(side==='me'?'rL':'rR').className='rcol'+(won?' win':'');

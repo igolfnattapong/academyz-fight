@@ -28,6 +28,7 @@ const NET = (() => {
       uid: cred.user.uid,
       set: (p, v) => r(p).set(v), update: (p, v) => r(p).update(v), remove: p => r(p).remove(), push: (p, v) => { const k = r(p).push(); k.set(v); return k.key },
       get: p => r(p).once('value').then(s => s.val()),
+      last: (p, n) => r(p).orderByKey().limitToLast(n).once('value').then(s => s.val()),
       on(p, cb) { const f = s => cb(s.val()); r(p).on('value', f); return () => r(p).off('value', f) },
       onAdd(p, cb, last) { const q = last ? r(p).limitToLast(last) : r(p); const f = s => cb(s.key, s.val()); q.on('child_added', f); return () => q.off('child_added', f) },
       onDisc(p, v) { const d = r(p).onDisconnect(); return v === null ? d.remove() : d.update(v) },
@@ -56,6 +57,7 @@ const NET = (() => {
       remove: p => Promise.resolve(write(t => put(t, p, null))),
       push(p, v) { const k = Date.now().toString(36) + Math.random().toString(36).slice(2, 7); write(t => put(t, p + '/' + k, JSON.parse(JSON.stringify(v)))); return k },
       get: p => Promise.resolve(at(read(), p) ?? null),
+      last(p, n) { const v = at(read(), p); if (!v) return Promise.resolve(null); const o = {}; for (const k of Object.keys(v).sort().slice(-n)) o[k] = v[k]; return Promise.resolve(o) },
       on(p, cb) { let s; const l = { check() { const v = at(last, p) ?? null, j = JSON.stringify(v); if (j !== s) { s = j; cb(v === null ? null : JSON.parse(j)) } } }; L.push(l); setTimeout(() => l.check(), 0); return () => L.splice(L.indexOf(l), 1) },
       onAdd(p, cb, n) { const seen = new Set(); let first = true; const l = { check() { const v = at(last, p) || {}; let ks = Object.keys(v).sort(); if (first && n) ks = ks.slice(-n); first = false; for (const k of ks) if (!seen.has(k)) { seen.add(k); cb(k, v[k]) } } }; L.push(l); setTimeout(() => l.check(), 0); return () => L.splice(L.indexOf(l), 1) },
       onDisc(p, v) { disc.push([p, v]); return Promise.resolve() },
@@ -72,10 +74,16 @@ const NET = (() => {
     return ready;
   }
   const call = (k) => (...a) => api ? api[k](...a) : Promise.resolve(null);
+  // play statistics (stats.html): stats/d/<day, Bangkok time>/u/<uid> = who came that day · /g/<key> = one finished game
+  const day = () => new Date(Date.now() + offset + 7 * 3600e3).toISOString().slice(0, 10);
+  const visit = name => init().then(u => { if (u) api.update('stats/d/' + day() + '/u/' + u, { n: String(name || '').slice(0, 16), at: Date.now() + offset }).catch(() => {}) });
+  const game = (rec, key) => init().then(u => { if (!u) return; const p = 'stats/d/' + day() + '/g/', v = { ...rec, u, at: Date.now() + offset };
+    (key ? api.set(p + key + '_' + u, v) : Promise.resolve(api.push(p, v))).catch(() => {}) });
   return {
     init, get on() { return !!api }, get uid() { return uid }, get mock() { return mock },
     now: () => Date.now() + offset,
-    set: call('set'), update: call('update'), remove: call('remove'), get: call('get'), onDisc: call('onDisc'), cancelDisc: call('cancelDisc'), tx: call('tx'),
+    visit, game, day,
+    set: call('set'), update: call('update'), remove: call('remove'), get: call('get'), last: call('last'), onDisc: call('onDisc'), cancelDisc: call('cancelDisc'), tx: call('tx'),
     push: (p, v) => api ? api.push(p, v) : null,
     sub: (p, cb) => api ? api.on(p, cb) : () => {},
     subAdd: (p, cb, n) => api ? api.onAdd(p, cb, n) : () => {},

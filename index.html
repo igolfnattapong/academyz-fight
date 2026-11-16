@@ -948,5 +948,6 @@ drawAcct();
 if(location.hash==='#lobby'){MODE='normal';go('s4')}
 if(location.hash==='#ranked'){MODE='ranked';go('s5')}
 window.__ui={go}; // test hook
+NET.visit(pname); // stats: who came today
 })();
 </script>
