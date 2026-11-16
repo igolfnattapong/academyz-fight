@@ -736,8 +736,9 @@ function play(a){const A=PL[a.who],T=PL[a.tgt],f=FR[a.who],sd=sideOf(a.who);
   {const si=Math.max(0,setIdx);a.inc.from=now()<beatT(si*SET_BEATS+CHECK_BEAT)-.25?si:si+1}
   if(!f){a.hit=true;a.cut=true;deliver(a);a.over=true;return}
   if(ANIMS[a.who])animDone(ANIMS[a.who]);ANIMS[a.who]=a;
-  // the target is still on screen in its own attack (waiting for its target's guard): that engine stops drawing it while this one does
-  if(ANIMS[a.tgt]&&FR[a.tgt]){FR[a.tgt].contentWindow.postMessage({cmd:'vis',a:0},'*');a.hidTgt=true}
+  // the target is still on screen in its own attack: that attack is cut short (never two pictures of one fighter);
+  // its own target stays on its spot holding a shield until the result, which then shows on that fighter
+  if(ANIMS[a.tgt]){const pv=ANIMS[a.tgt];pv.cut=true;pv.hit=true;animDone(pv);const e=memOf(pv.tgt);if(e&&!pv.sent)e.classList.add('guarding');deliver(pv)}
   // the engine sits on the attacker's floor line; the target is drawn at its own spot inside it (mirrored about the middle for the right side)
   const mir=sd==='r',PA=slotXY(sd,A.slot),PT=slotXY(sideOf(a.tgt),T.slot),y0=LY.ih*410/540,loc=x=>mir?LY.iw-(x-LY.fl):x-LY.fl;
   const x0=loc(PA.x),ut=loc(PT.x),ty=(PT.y-PA.y)*(540/LY.ih)/ZM;a.tx=PT.x;
@@ -750,7 +751,7 @@ function play(a){const A=PL[a.who],T=PL[a.tgt],f=FR[a.who],sd=sideOf(a.who);
 // watchdog: an engine that never answers can't leave two fighters hidden
 function animWatch(){const t=performance.now();for(const k in ANIMS){const a=ANIMS[k];if(!a.t0)continue;
   if((!a.hit&&t-a.t0>15000)||(a.hit&&!a.sent&&t-(a.tI||a.t0)>60000)||(a.sent&&t-(a.tS||t)>10000)){a.cut=true;a.hit=true;if(!a.res)a.res={ok:true,lost:0};deliver(a);animDone(a)}}}
-function animDone(a){if(ANIMS[a.who]!==a)return;delete ANIMS[a.who];a.over=true;if(a.hidTgt&&ANIMS[a.tgt]&&FR[a.tgt])FR[a.tgt].contentWindow.postMessage({cmd:'vis',a:1},'*');const f=FR[a.who];if(f){f.classList.remove('on');f.style.transform=''}
+function animDone(a){if(ANIMS[a.who]!==a)return;delete ANIMS[a.who];a.over=true;const f=FR[a.who];if(f){f.classList.remove('on');f.style.transform=''}
   if(!Object.keys(ANIMS).length)for(const t of ['tcold','tdim','tfl'])$(t).style.opacity=0;
   for(const id of [a.who,a.tgt]){if(Object.values(ANIMS).some(x=>x.who===id||x.tgt===id))continue;const e=memOf(id);if(e)e.classList.remove('out')}}
 addEventListener('message',e=>{const d=e.data||{};let a=null;for(const k in ANIMS){const f=FR[k];if(f&&e.source===f.contentWindow){a=ANIMS[k];break}}if(!a)return;
@@ -950,8 +951,8 @@ let HERE='room';function here(w){HERE=w;NET.init().then(u=>{if(!u)return;NET.set
 // ---------- open the room ----------
 here('room');setTimeout(()=>here(HERE),2500);setInterval(()=>here(HERE),20000);
 $('pad').style.visibility='hidden';$('rload').hidden=false;
-{const i=$('rinfo');const b=document.createElement('b');b.textContent='ห้อง '+ROOM.no+' · '+ROOM.name+' · '+SIZE+'v'+SIZE+(ROOM.lock?' 🔒':'');b.title='build 16/11 22:51';i.append(b,document.createElement('br'));
-  i.insertAdjacentHTML('beforeend','Scene <span></span><br>Music <span></span><br><small style="opacity:.6">เวอร์ชัน 16/11 22:51</small>');const sp=i.querySelectorAll('span');sp[0].textContent=ROOM.map;sp[1].textContent='…';fetch(SONG_URL).then(r=>r.json()).then(j=>{sp[1].textContent=j.title+(j.artist?' : '+j.artist:'')+' · bpm='+Math.round(j.bpm)}).catch(()=>{})}
+{const i=$('rinfo');const b=document.createElement('b');b.textContent='ห้อง '+ROOM.no+' · '+ROOM.name+' · '+SIZE+'v'+SIZE+(ROOM.lock?' 🔒':'');b.title='build 16/11 23:29';i.append(b,document.createElement('br'));
+  i.insertAdjacentHTML('beforeend','Scene <span></span><br>Music <span></span><br><small style="opacity:.6">เวอร์ชัน 16/11 23:29</small>');const sp=i.querySelectorAll('span');sp[0].textContent=ROOM.map;sp[1].textContent='…';fetch(SONG_URL).then(r=>r.json()).then(j=>{sp[1].textContent=j.title+(j.artist?' : '+j.artist:'')+' · bpm='+Math.round(j.bpm)}).catch(()=>{})}
 const bgReady=new Promise(r=>{const im=new Image();im.onload=im.onerror=r;im.src='bg/practice_room.jpg'});
 rPreload();addEventListener('pointerdown',rWake,{capture:true});addEventListener('keydown',rWake,{capture:true});
 setTimeout(()=>$('rload').classList.add('grid'),500);
