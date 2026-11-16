@@ -949,8 +949,8 @@ let HERE='room';function here(w){HERE=w;NET.init().then(u=>{if(!u)return;NET.set
 // ---------- open the room ----------
 here('room');setTimeout(()=>here(HERE),2500);setInterval(()=>here(HERE),20000);
 $('pad').style.visibility='hidden';$('rload').hidden=false;
-{const i=$('rinfo');const b=document.createElement('b');b.textContent='ห้อง '+ROOM.no+' · '+ROOM.name+' · '+SIZE+'v'+SIZE+(ROOM.lock?' 🔒':'');i.append(b,document.createElement('br'));
-  i.insertAdjacentHTML('beforeend','Scene <span></span><br>Music <span></span>');const sp=i.querySelectorAll('span');sp[0].textContent=ROOM.map;sp[1].textContent='…';fetch(SONG_URL).then(r=>r.json()).then(j=>{sp[1].textContent=j.title+(j.artist?' : '+j.artist:'')+' · bpm='+Math.round(j.bpm)}).catch(()=>{})}
+{const i=$('rinfo');const b=document.createElement('b');b.textContent='ห้อง '+ROOM.no+' · '+ROOM.name+' · '+SIZE+'v'+SIZE+(ROOM.lock?' 🔒':'');b.title='build 16/11 22:46';i.append(b,document.createElement('br'));
+  i.insertAdjacentHTML('beforeend','Scene <span></span><br>Music <span></span><br><small style="opacity:.6">เวอร์ชัน 16/11 22:46</small>');const sp=i.querySelectorAll('span');sp[0].textContent=ROOM.map;sp[1].textContent='…';fetch(SONG_URL).then(r=>r.json()).then(j=>{sp[1].textContent=j.title+(j.artist?' : '+j.artist:'')+' · bpm='+Math.round(j.bpm)}).catch(()=>{})}
 const bgReady=new Promise(r=>{const im=new Image();im.onload=im.onerror=r;im.src='bg/practice_room.jpg'});
 rPreload();addEventListener('pointerdown',rWake,{capture:true});addEventListener('keydown',rWake,{capture:true});
 setTimeout(()=>$('rload').classList.add('grid'),500);
