@@ -66,7 +66,7 @@ const ss=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
 function actor(name,x,face){const c=CH[name],o={name,c,x,face,src:{},next:1.2+Math.random(),bt:-1,dbl:false,phase:Math.random()*6,kb:0,flash:0,tilt:0};
   const img=new Image();img.onload=()=>{o.src.open=img;for(const st of ['half','closed']){const cc=document.createElement('canvas');cc.width=c.w;cc.height=c.h;const x=cc.getContext('2d');x.drawImage(img,0,0);
     const p=new Image();p.onload=()=>{x.drawImage(p,c.blink.rect[0],c.blink.rect[1]);o.src[st]=cc};p.src=c.blink[st]}};img.src=c.src;return o}
-const hero=actor('hero',AX,1),girl=actor(__T,TX,-1);
+const hero=actor('hero',AX,1);let girl=actor(__T,TX,-1);
 hero.pose=-1;hero.big=1;hero.dx=0;hero.dy=0;hero.sx=1;hero.sy=1;hero.rot=0;
 function eye(o){if(o.bt<0){if(clock>o.next){o.bt=clock;o.dbl=Math.random()<.25}return 'open'}
   const u=clock-o.bt;for(const [t,s] of [[.05,'half'],[.13,'closed'],[.19,'half']])if(u<t)return s;
@@ -200,8 +200,8 @@ function render(){const k=cv.width/W;ctx.setTransform(k,0,0,k,0,0);ctx.globalAlp
   for(const p of pops){const u=p.t/1.2,s=u<.1?.6+u*5:1;ctx.save();ctx.translate(girl.x,170-u*30);ctx.scale(s,s);ctx.globalAlpha=u>.7?1-(u-.7)/.3:1;ctx.font='700 56px "Chakra Petch",ui-monospace,monospace';ctx.textAlign='center';ctx.lineWidth=8;ctx.lineJoin='round';ctx.strokeStyle='#0b0c14';ctx.strokeText(p.text,0,0);ctx.fillStyle='#ff6b7a';ctx.fillText(p.text,0,0);ctx.restore()}
   if(flash>.01&&!NOBG){ctx.globalCompositeOperation='lighter';ctx.fillStyle=`rgba(140,200,255,${Math.min(.5,flash)})`;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over'}}
 /* ---- duel mode: target reacts with guard circle / knockdown, driven by parent ---- */
-const RA=__RA;const TN=girl.name;
-const RP=(RA[TN]||[]).map(p=>{const i=new Image();i.src=p.src;return i}),SG=(RA._sig||[]).map(p=>{const i=new Image();i.src=p.src;return i});
+const RA=__RA;let TN=girl.name;
+const RPof=n=>(RA[n]||[]).map(p=>{const i=new Image();i.src=p.src;return i});let RP=RPof(TN);const SG=(RA._sig||[]).map(p=>{const i=new Image();i.src=p.src;return i});
 const R={pose:-1,dx:0,sig:null,shards:[],stars:0,mode:'guard',started:false,resolved:false,tm:[],tw:null,playing:false,lc:0};
 function rat(t,fn){R.tm.push({t:clock+t,fn})}
 // attacker's energy colour: used for the pressure sparks while the defender holds the guard, and for the final burst
@@ -250,7 +250,8 @@ const _render=render;render=function(){_render();const dt=Math.max(0,clock-R.lc)
   R.rings=R.rings.filter(r=>r.t<r.l);ctx.globalAlpha=1;ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
   if(R.asked&&!R.resolved&&clock-R.askT>20)rResolve(0);
   if(R.playing&&clock>busyUntil+.2){if(!R.resolved){if(!R.asked){R.asked=true;R.askT=clock;parent.postMessage({ev:'impact'},'*')}}else if(R.pose<0&&!R.tm.length){R.playing=false;parent.postMessage({ev:'done'},'*')}}};
-addEventListener('message',e=>{const d=e.data||{};if(d.cmd==='vis'){for(const k of ['a','t'])if(k in d&&d[k]!==VIS[k]){VIS[k]=!!d[k];VIS['t'+k]=clock}}if(d.cmd==='play'){Object.assign(R,{pose:-1,dx:0,sig:null,shards:[],stars:0,mode:'guard',started:false,resolved:false,asked:false,tm:[],tw:null,playing:true,parts:[],rings:[],pt:0,endSent:false});go(3);rStart()}
+addEventListener('message',e=>{const d=e.data||{};if(d.cmd==='tgt'&&d.t&&CH[d.t]&&d.t!==TN){girl=actor(d.t,girl.x,-1);TN=d.t;RP=RPof(TN)} /* team mode: one engine attacks any target */
+  if(d.cmd==='vis'){for(const k of ['a','t'])if(k in d&&d[k]!==VIS[k]){VIS[k]=!!d[k];VIS['t'+k]=clock}}if(d.cmd==='play'){Object.assign(R,{pose:-1,dx:0,sig:null,shards:[],stars:0,mode:'guard',started:false,resolved:false,asked:false,tm:[],tw:null,playing:true,parts:[],rings:[],pt:0,endSent:false});go(3);rStart()}
   if(d.cmd==='result'&&R.asked&&!R.resolved){R.mode=d.res;rResolve(0)}
   if(d.cmd==='speed')scale=d.v;});
 // editor mode (?edit=1): report the animation clock every frame so the sound editor can pause, slow down and seek

@@ -289,6 +289,10 @@ button{font-family:inherit}
 .dots{display:flex;justify-content:center;gap:calc(.8*var(--u));margin-top:calc(.7*var(--u))}
 .dots i{width:calc(1.1*var(--u));height:calc(1.1*var(--u));border-radius:50%;background:#d8d2c6}.dots i.on{background:var(--red)}
 .lockrow{display:flex;align-items:center;gap:calc(1.6*var(--u))}
+.moderow{display:flex;align-items:center;gap:calc(1*var(--u))}.moderow>span{margin-right:auto}
+.moderow button{all:unset;cursor:pointer;font-family:"Bangers",var(--disp,sans-serif);letter-spacing:.05em;font-size:calc(2.6*var(--u));padding:calc(.4*var(--u)) calc(2*var(--u));border-radius:calc(3*var(--u));border:calc(.35*var(--u)) solid #14151f;background:#fff;color:#14151f}
+.moderow button[aria-pressed=true]{background:linear-gradient(#ffe36b,#ffb21c);box-shadow:0 calc(.35*var(--u)) 0 #14151f}
+.moderow button:focus-visible{outline:3px solid #e8344f;outline-offset:2px}
 .lockrow #nPass{width:calc(18*var(--u));letter-spacing:.3em;text-align:center}.lockrow #nPass:disabled{opacity:.4}
 .sw{display:flex;align-items:center;gap:calc(1*var(--u));cursor:pointer;white-space:nowrap}
 .sw input{position:absolute;opacity:0;width:1px;height:1px}
@@ -569,6 +573,7 @@ button{font-family:inherit}
         <div class="mapv" id="mapV" role="group" aria-roledescription="carousel"></div>
         <button type="button" class="mapnav" id="mapN" aria-label="แมพถัดไป">›</button></div>
       <div class="dots" id="mapD"></div></div>
+    <div class="moderow" role="group" aria-label="โหมด"><span>โหมด</span><button type="button" data-size="1" aria-pressed="true">1v1</button><button type="button" data-size="2" aria-pressed="false">2v2</button><button type="button" data-size="3" aria-pressed="false">3v3</button></div>
     <div class="lockrow"><label class="sw"><input type="checkbox" id="nLock"><i></i>ล็อกห้อง</label>
       <input id="nPass" inputmode="numeric" maxlength="4" placeholder="รหัส 4 ตัว" aria-label="รหัสห้อง 4 ตัวเลข" disabled></div>
     <div class="note" id="nErr" aria-live="polite"></div>
@@ -753,8 +758,8 @@ async function netLobby(){if(netL)return;netL=true;const uid=await NET.init();
   if(!uid){line('ระบบ','ต่อระบบออนไลน์ไม่ได้ตอนนี้ · เล่นกับบอทได้ตามปกติ');return}
   const beat=()=>{NET.set('online/'+uid,{name:pname,c:me,at:NET.now(),where:'lobby'});NET.onDisc('online/'+uid,null)};beat();setTimeout(beat,2500);setInterval(beat,20000);
   NET.sub('online',o=>{ONLINE=o||{};if($('app').dataset.s==='s4')drawLobby()});
-  NET.sub('rooms',rs=>{NROOMS=Object.entries(rs||{}).filter(([k,r])=>k!=='_lobby'&&r&&r.owner&&r.p&&r.p[r.owner]).map(([k,r])=>{const n=Object.keys(r.p).length,s=SONGS2.findIndex(x=>x.id===r.song);
-      return {id:k,no:r.no||k.slice(-3),name:String(r.name||'ห้อง').slice(0,24),host:String(r.host||'').slice(0,16),c:CHARS[r.c]?r.c:'hero',lock:!!r.lock,pass:r.pass||'',song:s<0?0:s,map:0,full:n>=2,play:r.st==='play'}}).sort((a,b)=>a.full-b.full);
+  NET.sub('rooms',rs=>{NROOMS=Object.entries(rs||{}).filter(([k,r])=>k!=='_lobby'&&r&&r.owner&&r.p&&r.p[r.owner]).map(([k,r])=>{const n=Object.keys(r.p).length,s=SONGS2.findIndex(x=>x.id===r.song),size=Math.max(1,Math.min(3,r.size|0||1));
+      return {id:k,no:r.no||k.slice(-3),name:String(r.name||'ห้อง').slice(0,24),host:String(r.host||'').slice(0,16),c:CHARS[r.c]?r.c:'hero',lock:!!r.lock,pass:r.pass||'',song:s<0?0:s,map:0,size,n,full:n>=size*2,play:r.st==='play'}}).sort((a,b)=>a.full-b.full);
     if($('app').dataset.s==='s4')drawLobby()});
   line('ระบบ','ออนไลน์แล้ว · ห้องที่มีป้าย LIVE คือห้องของผู้เล่นจริง');
   NET.subAdd('rooms/_lobby/chat',(k,m)=>{if(m&&m.t)line(String(m.n||'?').slice(0,16),String(m.t).slice(0,120))},20)}
@@ -766,7 +771,7 @@ function drawLobby(){$('pname').value=pname;CHIBI.set($('lChibi'),me);
   const q=$('q').value.trim().toLowerCase(),all=[...NROOMS,...ROOMS].filter(r=>!q||(r.name+r.host).toLowerCase().includes(q));
   $('rlist').innerHTML=all.map(r=>`<div class="room ${r.full?'full':'wait'}${r.no===selRoom&&!r.full?' sel':''}" data-no="${r.no}" role="button" tabindex="0">
     <span class="l"><b>${r.bot?'<span class="botb">BOT</span>':'<span class="botb live">LIVE</span>'}${esc(r.name)}${r.lock?'<span class="lk" aria-label="ล็อก">🔒</span>':''}</b><span>${esc(r.host)} (${CHARS[r.c].name})</span><span>music: ${SONGS2[r.song].name} (${SONGS2[r.song].bpm})</span></span>
-    <span class="r">status<em>${r.play?'กำลังเล่น':r.full?'เต็ม (2)':'ว่าง (1)'}</em>mode<em>1-on-1</em></span><button class="btn" ${r.full?'disabled':''}>${r.full?'🔒 เต็ม':'เข้าสู่'}</button></div>`).join('')||'<div class="note">ไม่พบห้อง</div>';
+    <span class="r">status<em>${r.play?'กำลังเล่น':(r.full?'เต็ม':'ว่าง')+' ('+(r.n||1)+'/'+(r.size||1)*2+')'}</em>mode<em>${(r.size||1)>1?r.size+'v'+r.size:'1-on-1'}</em></span><button class="btn" ${r.full?'disabled':''}>${r.full?'🔒 เต็ม':'เข้าสู่'}</button></div>`).join('')||'<div class="note">ไม่พบห้อง</div>';
   for(const el of $('rlist').querySelectorAll('.room.wait')){const r=[...NROOMS,...ROOMS].find(x=>String(x.no)===el.dataset.no);
     el.onclick=e=>{if(e.target.closest('.btn'))return join(r);selRoom=r.no;drawLobby()};el.ondblclick=()=>join(r);el.onkeydown=e=>{if(e.key==='Enter')join(r)}}}
 const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
@@ -787,33 +792,36 @@ $('mapP').onclick=()=>stepMap(-1);$('mapN').onclick=()=>stepMap(1);
 $('nLock').onchange=()=>{$('nPass').disabled=!$('nLock').checked;if($('nLock').checked)$('nPass').focus()};
 $('nPass').oninput=$('pIn').oninput=e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,4)};
 $('newRoom').onclick=()=>{$('nName').value=pname+' มาตีกัน';$('nSong').innerHTML=SONGS2.map((x,i)=>`<option value="${i}">${x.name} (${x.bpm} BPM)</option>`).join('');mapI=0;drawMaps();
-  $('nLock').checked=false;$('nPass').value='';$('nPass').disabled=true;$('nErr').textContent='';$('dNew').classList.add('on');$('nName').focus()};
+  $('nLock').checked=false;$('nPass').value='';$('nPass').disabled=true;$('nErr').textContent='';nSize=1;drawSize();$('dNew').classList.add('on');$('nName').focus()};
+let nSize=1;const drawSize=()=>{for(const b of document.querySelectorAll('.moderow [data-size]'))b.setAttribute('aria-pressed',+b.dataset.size===nSize)};
+for(const b of document.querySelectorAll('.moderow [data-size]'))b.onclick=()=>{nSize=+b.dataset.size;drawSize()};
 $('fNew').onsubmit=e=>{e.preventDefault();const nm=$('nName').value.trim();
   if(!nm){$('nErr').textContent='ตั้งชื่อห้องก่อน';return}
   if(MAPS[mapI].soon){$('nErr').textContent='แมพนี้ยังไม่เปิด เลือกแมพอื่น';return}
   if($('nLock').checked&&!/^\d{4}$/.test($('nPass').value)){$('nErr').textContent='ใส่รหัสตัวเลข 4 ตัว';$('nPass').focus();return}
   $('dNew').classList.remove('on');
-  enterRoom({net:NET.on?'new':null,no:100+Math.floor(Math.random()*900),name:nm,song:+$('nSong').value,map:mapI,lock:$('nLock').checked,pass:$('nPass').value,owner:true,
+  enterRoom({net:NET.on?'new':null,size:nSize,no:100+Math.floor(Math.random()*900),name:nm,song:+$('nSong').value,map:mapI,lock:$('nLock').checked,pass:$('nPass').value,owner:true,
     L:{name:pname,c:me,me:true,ready:false},R:null})};
 // ---------- join a room from the list (locked rooms ask for the code) ----------
 let pend=null;
 function join(r){if(r.id&&(r.full||r.play))return;if(r.lock){pend=r;$('pTitle').textContent='ห้อง '+r.no+' · '+r.name;$('pIn').value='';$('pErr').textContent='';$('dPass').classList.add('on');$('pIn').focus();return}
-  enterRoom({net:r.id||null,no:r.no,name:r.name,song:r.song,map:r.map,lock:false,owner:false,L:{name:r.host,c:r.c,bot:!r.id,ready:false},R:{name:pname,c:me,me:true,ready:false}})}
+  enterRoom({net:r.id||null,size:r.size||1,no:r.no,name:r.name,song:r.song,map:r.map,lock:false,owner:false,L:{name:r.host,c:r.c,bot:!r.id,ready:false},R:{name:pname,c:me,me:true,ready:false}})}
 $('fPass').onsubmit=e=>{e.preventDefault();if($('pIn').value!==pend.pass){$('pErr').textContent='รหัสไม่ถูก';UISFX.play('lock');return}
-  $('dPass').classList.remove('on');const r=pend;pend=null;enterRoom({net:r.id||null,no:r.no,name:r.name,song:r.song,map:r.map,lock:true,owner:false,L:{name:r.host,c:r.c,bot:!r.id,ready:false},R:{name:pname,c:me,me:true,ready:false}})};
+  $('dPass').classList.remove('on');const r=pend;pend=null;enterRoom({net:r.id||null,size:r.size||1,no:r.no,name:r.name,song:r.song,map:r.map,lock:true,owner:false,L:{name:r.host,c:r.c,bot:!r.id,ready:false},R:{name:pname,c:me,me:true,ready:false}})};
 // ---------- 6 · inside a room ----------
 // online play is not built yet: the other player is a bot that joins, says hi and readies up
 function enterRoom(r){ // the room is the fight screen itself (Zheza style): owner on the left, a guest joins on the right
   save();const m=MAPS[r.map]||MAPS[0],q=new URLSearchParams({room:1,owner:r.owner?1:0,me,rno:r.no,rname:r.name,lock:r.lock?1:0,mapn:m.name,song:SONGS2[r.song||0].id});
   if(r.net){q.set('net',r.net);if(r.owner&&r.lock)q.set('pw',r.pass||'')}
   else if(!r.owner){q.set('op',r.L.c);q.set('opn',r.L.name);q.set('bot',1)}
+  if((r.size||1)>1){q.set('size',r.size);location.href='team.html?'+q.toString();return} // 2v2 / 3v3
   location.href='battle.html?'+q.toString();return;
 }
 for(const b of document.querySelectorAll('[data-close]'))b.onclick=()=>b.closest('.dlg').classList.remove('on');
 addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.dlg.on').forEach(d=>d.classList.remove('on'))});
 // chat (local for now)
 const clog=$('clog');const line=(w,t)=>{const d=document.createElement('div');d.innerHTML='<b></b>: ';d.firstChild.textContent=w;d.append(t);clog.append(d);clog.scrollTop=1e9};
-line('ระบบ','ช่วงทดสอบ ห้องที่มีป้าย BOT เป็นบอทรอเล่นด้วย · สร้างห้องเองแล้วไม่มีคนเข้าใน 20 วินาที บอทจะเข้ามาเล่นด้วย');
+line('ระบบ','ห้องที่มีป้าย BOT เป็นบอทรอเล่นด้วย · สร้างห้องเลือกได้ 1v1 / 2v2 / 3v3');
 $('cform').onsubmit=e=>{e.preventDefault();const v=$('cin').value.trim().slice(0,120);if(v){if(NET.on)NET.push('rooms/_lobby/chat',{n:pname,t:v,at:NET.now()});else line(pname,v)}$('cin').value=''};
 layout();drawStage();
 // ---------- 5 · ranked matchmaking (bots until the server exists): random opponent, stage and song; tempo from the tier ----------
