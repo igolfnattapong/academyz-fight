@@ -860,7 +860,7 @@ async function netRoom(){const uid=await NET.init();
   if(!uid){if(ROOM.owner){chatLine('ระบบ','ต่อระบบออนไลน์ไม่ได้ · เล่นกับบอทในเครื่องนี้ได้ (เพิ่มบอทลงช่องว่าง)');NETR=null;localRoom();return}
     chatLine('ระบบ','ต่อระบบออนไลน์ไม่ได้ · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',2500);return}
   ME=uid;let mine;
-  if(ROOM.owner){mine=myRec('L',0);const room={no:+ROOM.no||0,name:ROOM.name,song:(QP.get('song')||'wake'),map:ROOM.map,lock:ROOM.lock,pass:QP.get('pw')||'',owner:uid,host:pname2,c:pick.me,size:SIZE,at:NET.now(),st:'room',p:{[uid]:mine}};
+  if(ROOM.owner){mine=myRec('L',0);const room={no:+ROOM.no||0,name:ROOM.name,song:(QP.get('song')||'wake'),map:ROOM.map,lock:ROOM.lock,pass:QP.get('pw')||'',owner:uid,host:pname2,c:pick.me,size:SIZE,at:NET.now(),st:'room',p:{[uid]:mine}};NETR.meta={...room};delete NETR.meta.p;
     NETR.rid=NET.push('rooms',room);NET.onDisc('rooms/'+NETR.rid,null);const q=new URLSearchParams(location.search);q.set('net',NETR.rid);history.replaceState(null,'','?'+q);
     chatLine('ระบบ',`สร้างห้อง ${SIZE}v${SIZE} แล้ว · รอเพื่อนเข้า หรือกด "+ บอท" ที่ช่องว่าง`)}
   else{const own=await NET.get('rooms/'+NETR.rid+'/owner'),st=own&&await NET.get('rooms/'+NETR.rid+'/st');
@@ -868,17 +868,34 @@ async function netRoom(){const uid=await NET.init();
     const r=own&&await NET.tx('rooms/'+NETR.rid+'/p',ps=>{ps=ps||{};if(ps[uid])return ps;if(Object.keys(ps).length>=SIZE*2)return;const f=freeSlot(ps);if(!f)return;ps[uid]=myRec(f.team,f.slot);return ps});
     if(!r||!r.ok){chatLine('ระบบ','ห้องเต็มหรือปิดไปแล้ว · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',2500);return}
     NET.onDisc('rooms/'+NETR.rid+'/p/'+uid,null)}
-  NETR.live=1;addEventListener('pagehide',()=>{try{ROOM.owner?NET.remove('rooms/'+NETR.rid):NET.remove('rooms/'+NETR.rid+'/p/'+ME)}catch(e){}});
+  NETR.live=1;addEventListener('pagehide',()=>{NETR.leaving=1;try{ROOM.owner?NET.remove('rooms/'+NETR.rid):NET.remove('rooms/'+NETR.rid+'/p/'+ME)}catch(e){}});
   const R='rooms/'+NETR.rid;
-  NET.sub(R+'/owner',o=>{if(!o&&!ROOM.owner&&!NETR.closed){NETR.closed=1;if(running||NETR.fin===1)abortGame('เจ้าของห้องออก');chatLine('ระบบ','เจ้าของห้องออกแล้ว ห้องปิด · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',1800)}});
+  // the room disappears: if it's mine and this page is still open, it was only a short drop — put the room back;
+  // a guest waits a few seconds for that before giving up
+  NET.sub(R+'/owner',o=>{if(o||NETR.leaving)return;
+    if(ROOM.owner){if(running||NETR.fin===1)abortGame('การเชื่อมต่อหลุดชั่วคราว');const ps={};for(const id of ids()){const q=PL[id];ps[id]={name:q.name,c:q.c,team:q.team,slot:q.slot,tier:q.tier.name,pic:q.pic,pet:q.pet,gear:q.gear,ready:q.bot,bot:q.bot||null,zp:0,g:0,bonus:0,done:-1}}
+      NET.set(R,{...NETR.meta,st:'room',at:NET.now(),p:ps}).then(()=>{NET.onDisc(R,null);chatLine('ระบบ','เชื่อมต่อใหม่แล้ว')});return}
+    if(NETR.closed)return;NETR.closed=1;
+    setTimeout(async()=>{if(await NET.get(R+'/owner')){NETR.closed=0;return}
+      if(running||NETR.fin===1)abortGame('เจ้าของห้องออก');chatLine('ระบบ','เจ้าของห้องออกแล้ว ห้องปิด · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',1800)},6000)});
   NET.sub(R+'/p',ps=>netPlayers(ps||{}));
   let first=true;NET.sub(R+'/start',st=>{if(!st)return;if(first&&st.at<NET.now()){first=false;NETR.g=st.g;return}first=false;
     if(st.g>NETR.g&&ROOM.phase==='room'){NETR.g=st.g;NETR.startAt=st.at;rStart()}});
   const chatFrom=NET.now()-1500;NET.subAdd(R+'/chat',(k,m)=>{if(m&&m.t&&(m.at||0)>=chatFrom)chatLine(m.n||'?',String(m.t).slice(0,120))},30);
   NET.subAdd(R+'/ev',(k,e)=>{if(!e||e.by===uid||e.g!==NETR.g||NETR.seen[k])return;NETR.seen[k]=1;netEv(e)})}
+// a short network drop runs the room's 'on disconnect' and removes my record; as long as this page is open I take my spot back
+let rejoining=false;
+async function rejoin(old){if(rejoining)return;rejoining=true;const uid=ME,R='rooms/'+NETR.rid;
+  if(running||NETR.fin===1)abortGame('การเชื่อมต่อหลุดชั่วคราว');
+  let own=await NET.get(R+'/owner');for(let k=0;k<6&&!own;k++){await new Promise(r=>setTimeout(r,1000));own=await NET.get(R+'/owner')} // the owner may be putting the room back
+  const r=own&&await NET.tx(R+'/p',ps=>{ps=ps||{};if(ps[uid])return ps;if(Object.keys(ps).length>=SIZE*2)return;
+    const f=old&&!Object.values(ps).some(q=>q.team===old.team&&q.slot===old.slot)?{team:old.team,slot:old.slot}:freeSlot(ps);if(!f)return;ps[uid]=myRec(f.team,f.slot);return ps});
+  rejoining=false;
+  if(!r||!r.ok){chatLine('ระบบ','หลุดออกจากห้อง · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',1800);return}
+  NET.onDisc(R+'/p/'+uid,null);chatLine('ระบบ','เชื่อมต่อใหม่แล้ว')}
 function netPlayers(ps){const gone=ids().filter(i=>!ps[i]);let changed=false;
   for(const id of gone){const p=PL[id],mid=running||NETR.fin===1;delete PL[id];changed=true;
-    if(id===ME){chatLine('ระบบ','หลุดออกจากห้อง · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',1800);return}
+    if(id===ME){if(!NETR.leaving)rejoin(p);return} // my record vanished (a short drop of the connection clears it): put myself back
     if(!p.bot)chatLine('ระบบ',p.name+(mid?' หลุดออก · เกมจบ':' ออกจากห้อง'));if(mid&&!p.bot)abortGame(p.name+' หลุดออก');else if(mid&&p.bot&&ROOM.owner){}}
   for(const id in ps){const r=ps[id];if(!r||typeof r!=='object')continue;const isNew=upsert(id,r);if(isNew){changed=true;if(id!==ME&&!r.bot&&ROOM.phase!=='load')chatLine('ระบบ',PL[id].name+' เข้าห้อง')}}
   if(PL[ME])MYTEAM=PL[ME].team;
@@ -933,7 +950,7 @@ function roomOpen(){$('rload').hidden=true;ROOM.phase='room';TUT.first();if(NETR
 $('rAct').onclick=()=>{if(ROOM.phase!=='room'||!PL[ME])return;const me=PL[ME];
   if(ROOM.owner&&me.ready&&full()&&humansReady()){if(live())netStart();else rStart();return}
   me.ready=!me.ready;sfx(me.ready?'GOOD':'tap');netMe();rDraw()};
-$('rOut').onclick=async()=>{if(live()){try{await (ROOM.owner?NET.remove('rooms/'+NETR.rid):NET.remove('rooms/'+NETR.rid+'/p/'+ME))}catch(e){}}location.href='index.html#lobby'};
+$('rOut').onclick=async()=>{if(NETR)NETR.leaving=1;if(live()){try{await (ROOM.owner?NET.remove('rooms/'+NETR.rid):NET.remove('rooms/'+NETR.rid+'/p/'+ME))}catch(e){}}location.href='index.html#lobby'};
 addEventListener('resize',layout);
 requestAnimationFrame(frame);layout();drawPanels();
 window.__team={PL,get ME(){return ME},get cur(){return cur},get running(){return running},CLASH,ATK,launch,finish:()=>finish(),get anim(){return Object.values(ANIMS)[0]||null},ANIMS,now:()=>now(),press};
