@@ -670,8 +670,8 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
 
 // ---------- scoring ----------
 const inWin=(inc,si)=>si>=inc.from;
-// a player already in a fight (being hit, or its own attack not finished yet) can't be picked as a new target
-function busy(id){if(PL[id].inc.length)return true;for(const k in ATK){const a=ATK[k];if(a.who===id&&!a.over)return true}
+// a player being hit (guarding) can't be picked as a new target; one whose attack has already landed can
+function busy(id){if(PL[id].inc.length)return true;for(const k in ATK){const a=ATK[k];if(a.who===id&&!a.over&&!a.hit)return true}
   for(const k in CLASH)for(const a in CLASH[k])if(a===id||CLASH[k][a].tgt===id)return true;return false}
 const winOf=(id,si)=>PL[id].inc.filter(x=>inWin(x,si));
 function resolveSet(id,n,m,kind,si,rb){const p=PL[id],[atk,de,sp]=p.st,base=n*m,F=p.fx,W=winOf(id,si);
@@ -732,6 +732,8 @@ function play(a){const A=PL[a.who],T=PL[a.tgt],f=FR[a.who],sd=sideOf(a.who);
   a.inc.from=Math.max(0,setIdx)+1; // the target can guard from the next row
   if(!f){a.hit=true;a.cut=true;deliver(a);a.over=true;return}
   if(ANIMS[a.who])animDone(ANIMS[a.who]);ANIMS[a.who]=a;
+  // the target is still on screen in its own attack (waiting for its target's guard): that engine stops drawing it while this one does
+  if(ANIMS[a.tgt]&&FR[a.tgt]){FR[a.tgt].contentWindow.postMessage({cmd:'vis',a:0},'*');a.hidTgt=true}
   // the engine sits on the attacker's floor line; the target is drawn at its own spot inside it (mirrored about the middle for the right side)
   const mir=sd==='r',PA=slotXY(sd,A.slot),PT=slotXY(sideOf(a.tgt),T.slot),y0=LY.ih*410/540,loc=x=>mir?LY.iw-(x-LY.fl):x-LY.fl;
   const x0=loc(PA.x),ut=loc(PT.x),ty=(PT.y-PA.y)*(540/LY.ih)/ZM;a.tx=PT.x;
@@ -744,7 +746,7 @@ function play(a){const A=PL[a.who],T=PL[a.tgt],f=FR[a.who],sd=sideOf(a.who);
 // watchdog: an engine that never answers can't leave two fighters hidden
 function animWatch(){const t=performance.now();for(const k in ANIMS){const a=ANIMS[k];if(!a.t0)continue;
   if((!a.hit&&t-a.t0>15000)||(a.hit&&!a.sent&&t-(a.tI||a.t0)>60000)||(a.sent&&t-(a.tS||t)>10000)){a.cut=true;a.hit=true;if(!a.res)a.res={ok:true,lost:0};deliver(a);animDone(a)}}}
-function animDone(a){if(ANIMS[a.who]!==a)return;delete ANIMS[a.who];a.over=true;const f=FR[a.who];if(f){f.classList.remove('on');f.style.transform=''}
+function animDone(a){if(ANIMS[a.who]!==a)return;delete ANIMS[a.who];a.over=true;if(a.hidTgt&&ANIMS[a.tgt]&&FR[a.tgt])FR[a.tgt].contentWindow.postMessage({cmd:'vis',a:1},'*');const f=FR[a.who];if(f){f.classList.remove('on');f.style.transform=''}
   if(!Object.keys(ANIMS).length)for(const t of ['tcold','tdim','tfl'])$(t).style.opacity=0;
   for(const id of [a.who,a.tgt]){if(Object.values(ANIMS).some(x=>x.who===id||x.tgt===id))continue;const e=memOf(id);if(e)e.classList.remove('out')}}
 addEventListener('message',e=>{const d=e.data||{};let a=null;for(const k in ANIMS){const f=FR[k];if(f&&e.source===f.contentWindow){a=ANIMS[k];break}}if(!a)return;
