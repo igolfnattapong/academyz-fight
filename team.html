@@ -713,7 +713,8 @@ function settle(tid,inc){const p=PL[tid],i=p.inc.indexOf(inc);if(i<0)return;p.in
   if(A&&A.stats){A.stats.atk++;if(!ok)A.stats.hit++}if(ok&&p.stats)p.stats.guard++;
   if(!ok)p.zp=Math.max(0,p.zp-lost);inc.a.res={ok,lost};deliver(inc.a);if(live())netSend({t:'res',u:tid,k:inc.a.key,ok,lost});hud()}
 function deliver(a){if(!a.res||!a.hit||a.sent)return;a.sent=true;a.tS=performance.now();const r=a.res,f=FR[a.who];
-  if(f&&!a.cut&&ANIMS[a.who]===a)f.contentWindow.postMessage({cmd:'result',res:r.ok?'guard':'fail'},'*'); // still on screen: the engine plays the guard / shatter
+  const h=a.holdBy;if(h&&ANIMS[h.who]===h){h.sent=true;h.tS=performance.now();FR[h.who].contentWindow.postMessage({cmd:'result',res:r.ok?'guard':'fail'},'*')}
+  else if(f&&!a.cut&&ANIMS[a.who]===a)f.contentWindow.postMessage({cmd:'result',res:r.ok?'guard':'fail'},'*'); // still on screen: the engine plays the guard / shatter
   else{const e=memOf(a.tgt);if(e){e.classList.remove('guarding','okfx','hitfx');void e.offsetWidth;e.classList.add(r.ok||!r.lost?'okfx':'hitfx');setTimeout(()=>e.classList.remove('okfx','hitfx'),900)}}
   sfx(r.ok?'guard':'shatter');petAct(a.tgt,r.ok?'cheer':'hurt');
   popText(a.tx?a.tx+'px':a.tside,r.ok||!r.lost?'GUARD!!!':'-'+r.lost.toLocaleString(),PL[a.tgt]?PL[a.tgt].name:'',r.ok||!r.lost?'#7cc8ff':'#ff4d6a')}
@@ -738,7 +739,7 @@ function play(a){const A=PL[a.who],T=PL[a.tgt],f=FR[a.who],sd=sideOf(a.who);
   if(ANIMS[a.who])animDone(ANIMS[a.who]);ANIMS[a.who]=a;
   // the target is still on screen in its own attack: that attack is cut short (never two pictures of one fighter);
   // its own target stays on its spot holding a shield until the result, which then shows on that fighter
-  if(ANIMS[a.tgt]){const pv=ANIMS[a.tgt];pv.cut=true;pv.hit=true;animDone(pv);const e=memOf(pv.tgt);if(e&&!pv.sent)e.classList.add('guarding');deliver(pv)}
+  if(ANIMS[a.tgt]){const pv=ANIMS[a.tgt];pv.cut=true;pv.hit=true;animDone(pv);if(!pv.sent&&!holdGuard(pv)){const e=memOf(pv.tgt);if(e)e.classList.add('guarding')}deliver(pv)}
   // the engine sits on the attacker's floor line; the target is drawn at its own spot inside it (mirrored about the middle for the right side)
   const mir=sd==='r',PA=slotXY(sd,A.slot),PT=slotXY(sideOf(a.tgt),T.slot),y0=LY.ih*410/540,loc=x=>mir?LY.iw-(x-LY.fl):x-LY.fl;
   const x0=loc(PA.x),ut=loc(PT.x),ty=(PT.y-PA.y)*(540/LY.ih)/ZM;a.tx=PT.x;
@@ -748,8 +749,19 @@ function play(a){const A=PL[a.who],T=PL[a.tgt],f=FR[a.who],sd=sideOf(a.who);
     f.contentWindow.postMessage({cmd:'tgt',t:T.c},'*');f.contentWindow.postMessage({cmd:'pos',ax:worldX(x0/LY.iw),tx:worldX(ut/LY.iw),ty,ts:1},'*');f.contentWindow.postMessage({cmd:'vis',a:1,t:1},'*');
     setTimeout(()=>{if(ANIMS[a.who]!==a)return;a.t0=performance.now();for(const id of [a.who,a.tgt]){const e=memOf(id);if(e)e.classList.add('out')}f.classList.add('on');
       f.contentWindow.postMessage({cmd:'play'},'*');petAct(a.who,'go')},80)})}
+// the target of a cut-short attack keeps guarding with its own engine (it can't attack while being hit, so that engine is free):
+// shield up now, guard or knockdown when the result comes
+function holdGuard(pv){const id=pv.tgt,B=PL[id],f=FR[id];if(!B||!f||ANIMS[id])return false;
+  const sd=sideOf(id),mir=sd==='l',PB=slotXY(sd,B.slot),y0=LY.ih*410/540,lx=mir?LY.iw-(PB.x-LY.fl):PB.x-LY.fl;
+  const h={who:id,tgt:id,hold:true,of:pv,hit:true,t0:performance.now(),tx:PB.x,tside:sd};pv.holdBy=h;ANIMS[id]=h;
+  f.style.transformOrigin=(LY.iw/2)+'px '+y0+'px';f.style.transform=`translate(0px,${PB.y-LY.feet}px) scale(${mir?-1:1},1)`;
+  (f.ready||Promise.resolve()).then(()=>{if(ANIMS[id]!==h)return;
+    f.contentWindow.postMessage({cmd:'tgt',t:B.c},'*');f.contentWindow.postMessage({cmd:'pos',ax:worldX(lx/LY.iw),tx:worldX(lx/LY.iw),ty:0,ts:1},'*');f.contentWindow.postMessage({cmd:'vis',a:0,t:1},'*');f.contentWindow.postMessage({cmd:'hold'},'*');
+    setTimeout(()=>{if(ANIMS[id]!==h)return;const e=memOf(id);if(e)e.classList.add('out');f.classList.add('on');if(pv.sent&&pv.res)f.contentWindow.postMessage({cmd:'result',res:pv.res.ok?'guard':'fail'},'*')},80)});
+  return true}
 // watchdog: an engine that never answers can't leave two fighters hidden
 function animWatch(){const t=performance.now();for(const k in ANIMS){const a=ANIMS[k];if(!a.t0)continue;
+  if(a.hold){if((!a.sent&&t-a.t0>60000)||(a.sent&&t-a.tS>10000))animDone(a);continue}
   if((!a.hit&&t-a.t0>15000)||(a.hit&&!a.sent&&t-(a.tI||a.t0)>60000)||(a.sent&&t-(a.tS||t)>10000)){a.cut=true;a.hit=true;if(!a.res)a.res={ok:true,lost:0};deliver(a);animDone(a)}}}
 function animDone(a){if(ANIMS[a.who]!==a)return;delete ANIMS[a.who];a.over=true;const f=FR[a.who];if(f){f.classList.remove('on');f.style.transform=''}
   if(!Object.keys(ANIMS).length)for(const t of ['tcold','tdim','tfl'])$(t).style.opacity=0;
@@ -951,8 +963,8 @@ let HERE='room';function here(w){HERE=w;NET.init().then(u=>{if(!u)return;NET.set
 // ---------- open the room ----------
 here('room');setTimeout(()=>here(HERE),2500);setInterval(()=>here(HERE),20000);
 $('pad').style.visibility='hidden';$('rload').hidden=false;
-{const i=$('rinfo');const b=document.createElement('b');b.textContent='ห้อง '+ROOM.no+' · '+ROOM.name+' · '+SIZE+'v'+SIZE+(ROOM.lock?' 🔒':'');b.title='build 16/11 23:29';i.append(b,document.createElement('br'));
-  i.insertAdjacentHTML('beforeend','Scene <span></span><br>Music <span></span><br><small style="opacity:.6">เวอร์ชัน 16/11 23:29</small>');const sp=i.querySelectorAll('span');sp[0].textContent=ROOM.map;sp[1].textContent='…';fetch(SONG_URL).then(r=>r.json()).then(j=>{sp[1].textContent=j.title+(j.artist?' : '+j.artist:'')+' · bpm='+Math.round(j.bpm)}).catch(()=>{})}
+{const i=$('rinfo');const b=document.createElement('b');b.textContent='ห้อง '+ROOM.no+' · '+ROOM.name+' · '+SIZE+'v'+SIZE+(ROOM.lock?' 🔒':'');b.title='build 16/11 23:38';i.append(b,document.createElement('br'));
+  i.insertAdjacentHTML('beforeend','Scene <span></span><br>Music <span></span><br><small style="opacity:.6">เวอร์ชัน 16/11 23:38</small>');const sp=i.querySelectorAll('span');sp[0].textContent=ROOM.map;sp[1].textContent='…';fetch(SONG_URL).then(r=>r.json()).then(j=>{sp[1].textContent=j.title+(j.artist?' : '+j.artist:'')+' · bpm='+Math.round(j.bpm)}).catch(()=>{})}
 const bgReady=new Promise(r=>{const im=new Image();im.onload=im.onerror=r;im.src='bg/practice_room.jpg'});
 rPreload();addEventListener('pointerdown',rWake,{capture:true});addEventListener('keydown',rWake,{capture:true});
 setTimeout(()=>$('rload').classList.add('grid'),500);

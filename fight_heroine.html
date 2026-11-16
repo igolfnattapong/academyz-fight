@@ -301,6 +301,7 @@ const _render=render;render=function(){_render();const dt=Math.max(0,clock-R.lc)
   if(R.asked&&!R.resolved&&clock-R.askT>20)rResolve(0);
   if(R.playing&&clock>busyUntil+.2){if(!R.resolved){if(!R.asked){R.asked=true;R.askT=clock;parent.postMessage({ev:'impact'},'*')}}else if(R.pose<0&&!R.tm.length){R.playing=false;parent.postMessage({ev:'done'},'*')}}};
 addEventListener('message',e=>{const d=e.data||{};if(d.cmd==='tgt'&&d.t&&CH[d.t]&&d.t!==TN){girl=actor(d.t,girl.x,-1);TN=d.t;RP=RPof(TN)} /* team mode: one engine attacks any target */
+  if(d.cmd==='hold'){Object.assign(R,{pose:-1,dx:0,sig:null,shards:[],stars:0,mode:'guard',started:false,resolved:false,asked:true,askT:clock,tm:[],tw:null,playing:true,parts:[],rings:[],pt:0,endSent:true});rStart()} /* team mode: only the target's guard (its attacker's move was cut short) */
   if(d.cmd==='pos'){if(isFinite(d.ax))hero.x=+d.ax;if(isFinite(d.tx))girl.x=+d.tx;TGY=isFinite(d.ty)?+d.ty:0;TGS=isFinite(d.ts)?+d.ts:1} /* team mode: attacker and target fight from where they stand */
   if(d.cmd==='vis'){for(const k of ['a','t'])if(k in d&&d[k]!==VIS[k]){VIS[k]=!!d[k];VIS['t'+k]=clock}}if(d.cmd==='play'){Object.assign(R,{pose:-1,dx:0,sig:null,shards:[],stars:0,mode:'guard',started:false,resolved:false,asked:false,tm:[],tw:null,playing:true,parts:[],rings:[],pt:0,endSent:false});go(3);rStart()}
   if(d.cmd==='result'&&R.asked&&!R.resolved){R.mode=d.res;rResolve(0)}
