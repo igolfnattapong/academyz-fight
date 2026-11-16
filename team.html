@@ -645,15 +645,15 @@ function fxPop(id,txt){const e=memOf(id);if(!e)return;const b=e.querySelector('.
 function drawTicks(){const g=$('gate');g.querySelectorAll('.beat').forEach(e=>e.remove());for(let b=1;b<8;b++){const x=b/CHECK_BEAT*85;if(x<100){const d=document.createElement('div');d.className='beat';d.style.left=x+'%';g.appendChild(d)}}}
 drawTicks();
 
-// ---------- engines: one per character in the room; the target is swapped in before each attack ----------
-function needEngines(){const want=new Set(ids().map(i=>PL[i].c)),ps=[];
-  for(const c of want)if(!FR[c]){const f=document.createElement('iframe');f.setAttribute('allowtransparency','true');f.src=`fight_${c}.html?t=${c==='hero'?'katana':'hero'}&z=${ZM}&bg=0`;f.title='ท่าของ'+CHARS[c].name;
-    $('cam').append(f);FR[c]=f;f.ready=new Promise(r=>f.addEventListener('load',()=>setTimeout(r,500),{once:true}));ps.push(f.ready)}
+// ---------- engines: one per player (its own character), so every player's attack can play at the same time ----------
+function needEngines(){for(const id of Object.keys(FR))if(!PL[id]||FR[id].c!==PL[id].c){FR[id].remove();delete FR[id]}
+  for(const id of ids())if(!FR[id]){const c=PL[id].c,f=document.createElement('iframe');f.setAttribute('allowtransparency','true');f.src=`fight_${c}.html?t=${c==='hero'?'katana':'hero'}&z=${ZM}&bg=0`;f.title='ท่าของ'+CHARS[c].name;
+    f.c=c;$('cam').append(f);FR[id]=f;f.ready=new Promise(r=>f.addEventListener('load',()=>setTimeout(r,500),{once:true}))}
   layout();return Promise.all(Object.values(FR).map(f=>f.ready))}
-function show(c,mir){for(const k in FR){FR[k].classList.toggle('on',k===c);if(k===c)FR[k].classList.toggle('mir',!!mir)}}
 // camera: closes in on the attacker while it charges, eases out before the hit
 const CAMHOLD={hero:.75,heroine:1.4,katana:1.55,ice:2.3,fire:1.3};let camT=null,camLeft=0,camAt=0;
-function camZoom(x,c,fy){const st=$('stage'),cs=getComputedStyle(st),y=(fy||parseFloat(cs.getPropertyValue('--feet')))-parseFloat(cs.getPropertyValue('--ih'))*.17;
+function camZoom(x,c,fy){return; // off: several fights can be on screen at once
+  const st=$('stage'),cs=getComputedStyle(st),y=(fy||parseFloat(cs.getPropertyValue('--feet')))-parseFloat(cs.getPropertyValue('--ih'))*.17;
   const cm=$('cam');cm.style.transition='transform .32s cubic-bezier(.2,.8,.3,1)';cm.style.transformOrigin=x+'px '+y+'px';cm.style.transform='scale(1.25)';
   camLeft=(CAMHOLD[c]||1)*1000/RATE;camAt=performance.now();clearTimeout(camT);camT=setTimeout(camOut,camLeft)}
 function camOut(){clearTimeout(camT);camT=null;const cm=$('cam');cm.style.transition='transform .45s ease-in-out';cm.style.transform=''}
@@ -670,12 +670,15 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
 
 // ---------- scoring ----------
 const inWin=(inc,si)=>si>=inc.from;
+// a player already in a fight (being hit, or its own attack not finished yet) can't be picked as a new target
+function busy(id){if(PL[id].inc.length)return true;for(const k in ATK){const a=ATK[k];if(a.who===id&&!a.over)return true}
+  for(const k in CLASH)for(const a in CLASH[k])if(a===id||CLASH[k][a].tgt===id)return true;return false}
 const winOf=(id,si)=>PL[id].inc.filter(x=>inWin(x,si));
 function resolveSet(id,n,m,kind,si,rb){const p=PL[id],[atk,de,sp]=p.st,base=n*m,F=p.fx,W=winOf(id,si);
   if(kind==='CT'&&W.length)kind='SP'; // no counter-attack while being hit: only guard or collect
   const z=zpOf(id,n,m,rb);p.zp+=z;if(F.teamShare)p.bonus+=z*F.teamShare/100*mates(id).length;
   for(const inc of W){if(kind==='SH')inc.guard+=base*C.dc*mult(de)*GUARD_K;inc.left--}
-  const lvl=Math.floor(p.g/40),fs=foes(id);
+  const lvl=Math.floor(p.g/40),fs=foes(id).filter(x=>!busy(x));
   if(kind==='CT'&&lvl>=1&&m>0&&fs.length){p.g=0;clashAdd(id,rndOf(fs),base*C.ac*lvl*mult(atk)*(m>=1&&F.perfectHit?1+F.perfectHit/100:1)*(F.petHit?1+F.petHit/100:1),lvl,si,m)}
   else p.g=Math.min(C.full,p.g+base*C.ga*mult(sp));
   for(const inc of W)if(inc.left<=0)settle(id,inc);
@@ -706,8 +709,8 @@ const ATK={};
 function settle(tid,inc){const p=PL[tid],i=p.inc.indexOf(inc);if(i<0)return;p.inc.splice(i,1);const lost=Math.round(lostOf(tid,inc)),ok=lost<=0,A=PL[inc.a.who];
   if(A&&A.stats){A.stats.atk++;if(!ok)A.stats.hit++}if(ok&&p.stats)p.stats.guard++;
   if(!ok)p.zp=Math.max(0,p.zp-lost);inc.a.res={ok,lost};deliver(inc.a);if(live())netSend({t:'res',u:tid,k:inc.a.key,ok,lost});hud()}
-function deliver(a){if(!a.res||!a.hit||a.sent)return;a.sent=true;a.tS=performance.now();const r=a.res,f=FR[PL[a.who]?PL[a.who].c:''];
-  if(f&&!a.cut&&anim===a)f.contentWindow.postMessage({cmd:'result',res:r.ok?'guard':'fail'},'*'); // still on screen: the engine plays the guard / shatter
+function deliver(a){if(!a.res||!a.hit||a.sent)return;a.sent=true;a.tS=performance.now();const r=a.res,f=FR[a.who];
+  if(f&&!a.cut&&ANIMS[a.who]===a)f.contentWindow.postMessage({cmd:'result',res:r.ok?'guard':'fail'},'*'); // still on screen: the engine plays the guard / shatter
   else{const e=memOf(a.tgt);if(e){e.classList.remove('guarding','okfx','hitfx');void e.offsetWidth;e.classList.add(r.ok||!r.lost?'okfx':'hitfx');setTimeout(()=>e.classList.remove('okfx','hitfx'),900)}}
   sfx(r.ok?'guard':'shatter');petAct(a.tgt,r.ok?'cheer':'hurt');
   popText(a.tx?a.tx+'px':a.tside,r.ok||!r.lost?'GUARD!!!':'-'+r.lost.toLocaleString(),PL[a.tgt]?PL[a.tgt].name:'',r.ok||!r.lost?'#7cc8ff':'#ff4d6a')}
@@ -717,33 +720,38 @@ function clashAdd(id,tgt,dmg,lvl,si,m){(CLASH[si]||(CLASH[si]={}))[id]={tgt,dmg,
 function beats(a,b,ca,cb){const d=PL[a].st[2]-PL[b].st[2];if(d)return d>0;const fa=!!PL[a].fx.first,fb=!!PL[b].fx.first;if(fa!==fb)return fa;if(ca.m!==cb.m)return ca.m>cb.m;return a<b}
 function clashTick(t){for(const k in CLASH){const si=+k;if(t<beatT(si*SET_BEATS+CHECK_BEAT)+(live()?.9:.36))continue;const c=CLASH[k];delete CLASH[k];const lost=new Set();
     for(const a in c){const b=c[a].tgt;if(c[b]&&c[b].tgt===a&&!lost.has(a)&&!lost.has(b)){const w=beats(a,b,c[a],c[b])?a:b,l=w===a?b:a;lost.add(l);popText(slotXY(sideOf(l),PL[l].slot).x+'px','TOO SLOW!',PL[l].name,'#c9cbd6');sfx('err')}}
-    for(const a of Object.keys(c).sort())if(!lost.has(a)&&PL[a]&&PL[c[a].tgt])launch(a,c[a].tgt,c[a].dmg,c[a].lvl,si)}}
+    for(const a of Object.keys(c).sort()){if(lost.has(a)||!PL[a])continue;let tg=c[a].tgt;
+      if(!PL[tg]||busy(tg))tg=foes(a).sort().find(x=>!busy(x)); // same target picked twice: the second goes for the free one
+      if(tg)launch(a,tg,c[a].dmg,c[a].lvl,si);else{popText(slotXY(sideOf(a),PL[a].slot).x+'px','MISS!',PL[a].name,'#c9cbd6')}}}}
 function launch(aid,tid,dmg,lvl,si){const a={who:aid,tgt:tid,dmg,lvl,key:aid+'_'+si,tside:sideOf(tid)};const inc={dmg,lvl,guard:0,from:Infinity,left:GUARD_ROWS,a}; /* the guard window opens when the attack is shown */a.inc=inc;ATK[a.key]=a;
-  PL[tid].inc.push(inc);if(local(tid))autoGuard(tid,inc);queue.push(a);pump();
+  PL[tid].inc.push(inc);if(local(tid))autoGuard(tid,inc);play(a);
   if(live()&&!local(tid))setTimeout(()=>{const p=PL[tid];if(p&&p.inc.includes(inc)){p.inc.splice(p.inc.indexOf(inc),1);a.res={ok:true,lost:0};deliver(a)}},90000)} // never wait forever for the other side's answer
-// one animation at a time: the attacker's engine plays at the duel spots, everyone else steps back
-function pump(){if(anim||!queue.length)return;const a=queue.shift();if(!PL[a.who]||!PL[a.tgt]){setTimeout(pump,0);return}anim=a;const A=PL[a.who],T=PL[a.tgt],f=FR[A.c],sd=sideOf(a.who);
-  if(a.inc.from===Infinity)a.inc.from=Math.max(0,setIdx)+1; // the target can guard from the next row, however long the attack waited in line
-  if(!f){a.hit=true;deliver(a);anim=null;setTimeout(pump,200);return}
-  // the attacker's engine draws both fighters where they stand (mirrored when the attacker is on the right); their own figures step aside meanwhile
-  // the engine is moved onto the attacker's floor line and size; the target is drawn at its own depth (higher up, smaller) inside it
-  // (mirroring is about the middle of the engine, so both fighters stay inside its canvas)
+// every attack plays at once on the attacker's own engine, from where the attacker stands to where the target stands
+const ANIMS={}; // attacker id → attack on screen
+function play(a){const A=PL[a.who],T=PL[a.tgt],f=FR[a.who],sd=sideOf(a.who);
+  a.inc.from=Math.max(0,setIdx)+1; // the target can guard from the next row
+  if(!f){a.hit=true;a.cut=true;deliver(a);a.over=true;return}
+  if(ANIMS[a.who])animDone(ANIMS[a.who]);ANIMS[a.who]=a;
+  // the engine sits on the attacker's floor line; the target is drawn at its own spot inside it (mirrored about the middle for the right side)
   const mir=sd==='r',PA=slotXY(sd,A.slot),PT=slotXY(sideOf(a.tgt),T.slot),y0=LY.ih*410/540,loc=x=>mir?LY.iw-(x-LY.fl):x-LY.fl;
-  const x0=loc(PA.x),ut=loc(PT.x),ty=(PT.y-PA.y)*(540/LY.ih)/ZM,sa=1;a.tx=PT.x;
+  const x0=loc(PA.x),ut=loc(PT.x),ty=(PT.y-PA.y)*(540/LY.ih)/ZM;a.tx=PT.x;
   f.style.transformOrigin=(LY.iw/2)+'px '+y0+'px';f.style.transform=`translate(0px,${PA.y-LY.feet}px) scale(${mir?-1:1},1)`;
-  a.t0=performance.now(); // watchdog (frame): an engine that never answers can't leave the two fighters hidden
-  (f.ready||Promise.resolve()).then(()=>{if(anim!==a)return;
-    f.contentWindow.postMessage({cmd:'tgt',t:T.c},'*');f.contentWindow.postMessage({cmd:'pos',ax:worldX(x0/LY.iw),tx:worldX(ut/LY.iw),ty,ts:PT.r/sa},'*');f.contentWindow.postMessage({cmd:'vis',a:1,t:1},'*');
-    setTimeout(()=>{if(anim!==a)return;a.t0=performance.now();for(const id of [a.who,a.tgt]){const e=memOf(id);if(e)e.classList.add('out')}show(A.c,mir);
-      f.contentWindow.postMessage({cmd:'play'},'*');camZoom(PA.x,A.c,PA.y);petAct(a.who,'go')},80)})}
-function animWatch(){const a=anim;if(!a||!a.t0)return;const t=performance.now();
-  if((!a.hit&&t-a.t0>15000)||(a.hit&&!a.sent&&t-(a.tI||a.t0)>60000)||(a.sent&&t-(a.tS||t)>10000)){a.cut=true;a.hit=true;if(!a.res)a.res={ok:true,lost:0};deliver(a);animDone()}}
-function animDone(){if(anim&&PL[anim.who]&&FR[PL[anim.who].c])FR[PL[anim.who].c].style.transform='';anim=null;for(const t of ['tcold','tdim','tfl'])$(t).style.opacity=0;show(null);for(const e of $('mems').children)e.classList.remove('out','dim');setTimeout(pump,200)}
-addEventListener('message',e=>{const d=e.data||{};if(!anim)return;const f=FR[PL[anim.who]?PL[anim.who].c:''];if(!f||e.source!==f.contentWindow)return;
-  if(d.ev==='sfx'){charSfx(PL[anim.who].c,d.k,d.p);return}
+  a.t0=performance.now();
+  (f.ready||Promise.resolve()).then(()=>{if(ANIMS[a.who]!==a)return;
+    f.contentWindow.postMessage({cmd:'tgt',t:T.c},'*');f.contentWindow.postMessage({cmd:'pos',ax:worldX(x0/LY.iw),tx:worldX(ut/LY.iw),ty,ts:1},'*');f.contentWindow.postMessage({cmd:'vis',a:1,t:1},'*');
+    setTimeout(()=>{if(ANIMS[a.who]!==a)return;a.t0=performance.now();for(const id of [a.who,a.tgt]){const e=memOf(id);if(e)e.classList.add('out')}f.classList.add('on');
+      f.contentWindow.postMessage({cmd:'play'},'*');petAct(a.who,'go')},80)})}
+// watchdog: an engine that never answers can't leave two fighters hidden
+function animWatch(){const t=performance.now();for(const k in ANIMS){const a=ANIMS[k];if(!a.t0)continue;
+  if((!a.hit&&t-a.t0>15000)||(a.hit&&!a.sent&&t-(a.tI||a.t0)>60000)||(a.sent&&t-(a.tS||t)>10000)){a.cut=true;a.hit=true;if(!a.res)a.res={ok:true,lost:0};deliver(a);animDone(a)}}}
+function animDone(a){if(ANIMS[a.who]!==a)return;delete ANIMS[a.who];a.over=true;const f=FR[a.who];if(f){f.classList.remove('on');f.style.transform=''}
+  if(!Object.keys(ANIMS).length)for(const t of ['tcold','tdim','tfl'])$(t).style.opacity=0;
+  for(const id of [a.who,a.tgt]){if(Object.values(ANIMS).some(x=>x.who===id||x.tgt===id))continue;const e=memOf(id);if(e)e.classList.remove('out')}}
+addEventListener('message',e=>{const d=e.data||{};let a=null;for(const k in ANIMS){const f=FR[k];if(f&&e.source===f.contentWindow){a=ANIMS[k];break}}if(!a)return;
+  if(d.ev==='sfx'){charSfx(PL[a.who].c,d.k,d.p);return}
   if(d.ev==='tint'){$('tcold').style.opacity=d.cold||0;$('tdim').style.opacity=d.dim;const fl=$('tfl');fl.style.background=`rgb(${d.col})`;fl.style.opacity=d.flash;return}
-  if(d.ev==='impact'){anim.hit=true;anim.tI=performance.now();deliver(anim)} // the engine holds the guard pose until the result, then plays guard / knockdown
-  if(d.ev==='done')animDone()});
+  if(d.ev==='impact'){a.hit=true;a.tI=performance.now();deliver(a)} // the engine holds the guard pose until the result, then plays guard / knockdown
+  if(d.ev==='done')animDone(a)});
 
 // ---------- bots (played on the room owner's screen; offline, on this one) ----------
 let botQ=[];
@@ -780,7 +788,7 @@ async function loadAll(){if(!ac)ac=new (window.AudioContext||window.webkitAudioC
 async function startGame(){try{await loadAll();await needEngines()}catch(err){chatLine('ระบบ','โหลดไม่สำเร็จ: '+err.message);return}
   for(const id of ids()){const p=PL[id],F=FX.build(p.gear),b=CHARS[p.c].st;Object.assign(p,{inc:[],combo:0,fx:F,st:b.map((v,j)=>v+F.add[j]+v*F.pct/100),tk:{},done:-1,stats:{PERFECT:0,GREAT:0,GOOD:0,BAD:0,MISS:0,atk:0,hit:0,guard:0}});
     p.zp=0;p.bonus=0;p.g=local(id)&&F.startGauge?C.full*F.startGauge/100:0}
-  anim=null;queue=[];botQ=[];for(const k in CLASH)delete CLASH[k];for(const k in ATK)delete ATK[k];setIdx=-1;cur=null;$('arrows').innerHTML='';$('result').hidden=true;$('pad').style.visibility='';show(null);drawMems();hud();
+  clearAnims();botQ=[];for(const k in ATK)delete ATK[k];setIdx=-1;cur=null;$('arrows').innerHTML='';$('result').hidden=true;$('pad').style.visibility='';drawMems();hud();
   src=ac.createBufferSource();src.buffer=buf;if(!musicBus){musicBus=ac.createGain();musicBus.connect(ac.destination)}musicBus.gain.value=VOL.m/100;src.playbackRate.value=RATE;src.connect(musicBus);
   t0=ac.currentTime+(NETR&&NETR.startAt?Math.max(.15,(NETR.startAt-NET.now())/1000):.15);if(NETR)NETR.startAt=0;src.start(t0);running=true;paused=false}
 function finish(){
@@ -828,13 +836,13 @@ async function rPreload(){try{await loadAll()}catch(e){}}
 const rWake=()=>{try{ac&&ac.resume()}catch(e){}};
 function rStart(){ROOM.phase='play';here('play');$('tut').hidden=true;rWake();$('getready').classList.add('show');$('stage').classList.remove('room-on');rDraw();startGame()}
 // clear whatever attack was still playing or waiting (the song can end in the middle of one)
-function clearAnims(){for(const k in FR){FR[k].style.transform='';try{FR[k].contentWindow.postMessage({cmd:'speed',v:1},'*')}catch(e){}}anim=null;queue=[];for(const k in CLASH)delete CLASH[k];show(null);camOut();
+function clearAnims(){for(const k in FR){FR[k].style.transform='';FR[k].classList.remove('on')}for(const k in ANIMS)delete ANIMS[k];for(const k in CLASH)delete CLASH[k];camOut();
   for(const t of ['tcold','tdim','tfl'])$(t).style.opacity=0;for(const e of $('mems').children)e.classList.remove('out','dim','guarding','okfx','hitfx')}
 function rBack(){ROOM.phase='room';clearAnims();here('room');$('stage').classList.add('room-on');$('pad').style.visibility='hidden';
   for(const id of ids()){const p=PL[id];p.inc=[];if(local(id)){p.zp=0;p.g=0;p.bonus=0}if(!p.bot&&id===ME)p.ready=false}
   if(live()){NETR.fin=0;netMe();if(ROOM.owner)NET.update('rooms/'+NETR.rid,{st:'room'})}hud();rDraw()}
-function abortGame(why){running=false;if(NETR)NETR.fin=0;try{src&&src.stop()}catch(e){}camOut();anim=null;queue=[];for(const k in CLASH)delete CLASH[k];show(null);for(const t of ['tcold','tdim','tfl'])$(t).style.opacity=0;
-  $('lane').classList.remove('show');$('getready').classList.remove('show');$('result').hidden=true;for(const e of $('mems').children)e.classList.remove('out','dim');
+function abortGame(why){running=false;if(NETR)NETR.fin=0;try{src&&src.stop()}catch(e){}clearAnims();
+  $('lane').classList.remove('show');$('getready').classList.remove('show');$('result').hidden=true;
   popText('50%','เกมจบ',why||'มีคนหลุดออก','#fff');PL[ME]&&(PL[ME].ready=false);rBack()}
 
 // ---------- online ----------
@@ -923,6 +931,6 @@ $('rAct').onclick=()=>{if(ROOM.phase!=='room'||!PL[ME])return;const me=PL[ME];
 $('rOut').onclick=async()=>{if(live()){try{await (ROOM.owner?NET.remove('rooms/'+NETR.rid):NET.remove('rooms/'+NETR.rid+'/p/'+ME))}catch(e){}}location.href='index.html#lobby'};
 addEventListener('resize',layout);
 requestAnimationFrame(frame);layout();drawPanels();
-window.__team={PL,get ME(){return ME},get cur(){return cur},get running(){return running},CLASH,ATK,launch,finish:()=>finish(),get anim(){return anim},now:()=>now(),press};
+window.__team={PL,get ME(){return ME},get cur(){return cur},get running(){return running},CLASH,ATK,launch,finish:()=>finish(),get anim(){return Object.values(ANIMS)[0]||null},ANIMS,now:()=>now(),press};
 })();
 </script>
