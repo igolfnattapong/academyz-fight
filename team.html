@@ -542,7 +542,7 @@ function chatLine(who,txt){const d=document.createElement('div');d.innerHTML='<b
 // Animations are cut-ins: the attacker's engine plays at the two duel spots while the others step back.
 // =====================================================================================================
 const QP=new URLSearchParams(location.search);let RATE=1;const RANKED=false,PRACTICE=false;
-const SIZE=Math.max(2,Math.min(3,+QP.get('size')||2));
+const SIZE=2; // 2v2 only for now (3v3 is off)
 const ROOM={owner:QP.get('owner')!=='0',no:QP.get('rno')||'',name:QP.get('rname')||'',lock:QP.get('lock')==='1',map:QP.get('mapn')||'ห้องซ้อมดนตรี',phase:'load',T:[]};
 var NETR=QP.get('net')?{rid:QP.get('net')==='new'?null:QP.get('net'),g:0,fin:0,startAt:0,seen:{},live:0}:null;
 const BOTN=['BOT ShiroX','BOT มิวมิว','BOT Rocker','BOT Kanade','BOT ซันนี่','BOT Tempo99','BOT เบสหนัก','BOT Melo','BOT ชิโระ','BOT FireBoy','BOT Yuki','BOT NoteNote'];
@@ -580,7 +580,8 @@ function freeSlot(ps,prefer){const cnt=t=>Object.values(ps).filter(p=>p.team===t
 function upsert(id,r){const was=PL[id],p=was||(PL[id]={id,zp:0,g:0,bonus:0,inc:[],tk:{},combo:0,stats:null,done:-1});
   p.name=String(r.name||'ผู้เล่น').slice(0,16);p.c=CHARS[r.c]?r.c:'hero';p.team=r.team==='R'?'R':'L';p.slot=Math.max(0,Math.min(SIZE-1,r.slot|0));p.bot=!!r.bot;
   p.tier=tierBy(r.tier);p.pic=typeof r.pic==='string'&&r.pic.startsWith('data:image/')?r.pic:null;p.pet=PETS.includes(r.pet)?r.pet:null;p.gear=Array.isArray(r.gear)?r.gear:[];p.ready=!!r.ready;
-  if(!local(id)){p.zp=+r.zp||0;p.g=+r.g||0;p.bonus=+r.bonus||0;if(typeof r.done==='number')p.done=r.done}
+  if(!local(id)){p.zp=+r.zp||0;p.g=+r.g||0;p.bonus=+r.bonus||0;if(typeof r.done==='number')p.done=r.done;
+    if(r.stats&&typeof r.stats==='object'&&NETR&&r.done===NETR.g)p.stats=Object.assign({},p.stats||{},r.stats)} // the final numbers come from each player's own screen
   return !was}
 
 // ---------- the stage: one figure per player, standing in two lines ----------
@@ -594,7 +595,7 @@ function layout(){const st=$('stage'),w=st.clientWidth,h=st.clientHeight,u=Math.
 // everyone stands in one line on the floor (slot 0 nearest the middle); characters are drawn smaller so a whole team fits
 // each team stands in a slanted line that follows the room: the front one nearest the camera, the others further back
 // (higher up the floor, smaller, a little toward the middle). [part of the engine's width, height above the front line (part of the engine's height), size]
-const ZM=SIZE===3?.66:.7,SPOTS={2:[[.24,0,1],[.33,.13,.85]],3:[[.21,0,1],[.285,.11,.87],[.36,.22,.75]]};
+const ZM=.72,SPOTS={2:[[.282,0,1],[.15,.075,1]]}; // full size (same as 1v1); the partner stands beside, a step further back along the room
 const spot=slot=>SPOTS[SIZE][slot]||SPOTS[SIZE][0];
 const slotF=(side,slot)=>{const f=spot(slot)[0];return side==='l'?f:1-f}; // part of the engine's width
 function slotXY(side,slot){const [,dy,r]=spot(slot);return {x:LY.fl+LY.iw*slotF(side,slot),y:LY.feet-LY.ih*dy,s:ZM/.72*r,r,z:10-slot}}
@@ -705,7 +706,7 @@ const ATK={};
 function settle(tid,inc){const p=PL[tid],i=p.inc.indexOf(inc);if(i<0)return;p.inc.splice(i,1);const lost=Math.round(lostOf(tid,inc)),ok=lost<=0,A=PL[inc.a.who];
   if(A&&A.stats){A.stats.atk++;if(!ok)A.stats.hit++}if(ok&&p.stats)p.stats.guard++;
   if(!ok)p.zp=Math.max(0,p.zp-lost);inc.a.res={ok,lost};deliver(inc.a);if(live())netSend({t:'res',u:tid,k:inc.a.key,ok,lost});hud()}
-function deliver(a){if(!a.res||!a.hit||a.sent)return;a.sent=true;const r=a.res,f=FR[PL[a.who]?PL[a.who].c:''];
+function deliver(a){if(!a.res||!a.hit||a.sent)return;a.sent=true;a.tS=performance.now();const r=a.res,f=FR[PL[a.who]?PL[a.who].c:''];
   if(f&&!a.cut&&anim===a)f.contentWindow.postMessage({cmd:'result',res:r.ok?'guard':'fail'},'*'); // still on screen: the engine plays the guard / shatter
   else{const e=memOf(a.tgt);if(e){e.classList.remove('guarding','okfx','hitfx');void e.offsetWidth;e.classList.add(r.ok||!r.lost?'okfx':'hitfx');setTimeout(()=>e.classList.remove('okfx','hitfx'),900)}}
   sfx(r.ok?'guard':'shatter');petAct(a.tgt,r.ok?'cheer':'hurt');
@@ -726,19 +727,22 @@ function pump(){if(anim||!queue.length)return;const a=queue.shift();if(!PL[a.who
   if(!f){a.hit=true;deliver(a);anim=null;setTimeout(pump,200);return}
   // the attacker's engine draws both fighters where they stand (mirrored when the attacker is on the right); their own figures step aside meanwhile
   // the engine is moved onto the attacker's floor line and size; the target is drawn at its own depth (higher up, smaller) inside it
-  const mir=sd==='r',PA=slotXY(sd,A.slot),PT=slotXY(sideOf(a.tgt),T.slot),sa=PA.r,y0=LY.ih*410/540,x0=PA.x-LY.fl,sg=mir?-1:1;
-  const ut=x0+sg*(PT.x-LY.fl-x0)/sa,ty=(PT.y-PA.y)/sa*(540/LY.ih)/ZM;a.tx=PT.x;
-  f.style.transformOrigin=x0+'px '+y0+'px';f.style.transform=`translate(0px,${PA.y-LY.feet}px) scale(${sg*sa},${sa})`;
-  f.contentWindow.postMessage({cmd:'tgt',t:T.c},'*');f.contentWindow.postMessage({cmd:'pos',ax:worldX(x0/LY.iw),tx:worldX(ut/LY.iw),ty,ts:PT.r/sa},'*');f.contentWindow.postMessage({cmd:'vis',a:1,t:1},'*');
-  setTimeout(()=>{if(anim!==a)return;for(const id of [a.who,a.tgt]){const e=memOf(id);if(e)e.classList.add('out')}show(A.c,mir);
-    f.contentWindow.postMessage({cmd:'play'},'*');camZoom(PA.x,A.c,PA.y);petAct(a.who,'go')},60)}
+  // (mirroring is about the middle of the engine, so both fighters stay inside its canvas)
+  const mir=sd==='r',PA=slotXY(sd,A.slot),PT=slotXY(sideOf(a.tgt),T.slot),y0=LY.ih*410/540,loc=x=>mir?LY.iw-(x-LY.fl):x-LY.fl;
+  const x0=loc(PA.x),ut=loc(PT.x),ty=(PT.y-PA.y)*(540/LY.ih)/ZM,sa=1;a.tx=PT.x;
+  f.style.transformOrigin=(LY.iw/2)+'px '+y0+'px';f.style.transform=`translate(0px,${PA.y-LY.feet}px) scale(${mir?-1:1},1)`;
+  a.t0=performance.now(); // watchdog (frame): an engine that never answers can't leave the two fighters hidden
+  (f.ready||Promise.resolve()).then(()=>{if(anim!==a)return;
+    f.contentWindow.postMessage({cmd:'tgt',t:T.c},'*');f.contentWindow.postMessage({cmd:'pos',ax:worldX(x0/LY.iw),tx:worldX(ut/LY.iw),ty,ts:PT.r/sa},'*');f.contentWindow.postMessage({cmd:'vis',a:1,t:1},'*');
+    setTimeout(()=>{if(anim!==a)return;a.t0=performance.now();for(const id of [a.who,a.tgt]){const e=memOf(id);if(e)e.classList.add('out')}show(A.c,mir);
+      f.contentWindow.postMessage({cmd:'play'},'*');camZoom(PA.x,A.c,PA.y);petAct(a.who,'go')},80)})}
+function animWatch(){const a=anim;if(!a||!a.t0)return;const t=performance.now();
+  if((!a.hit&&t-a.t0>15000)||(a.hit&&!a.sent&&t-(a.tI||a.t0)>60000)||(a.sent&&t-(a.tS||t)>10000)){a.cut=true;a.hit=true;if(!a.res)a.res={ok:true,lost:0};deliver(a);animDone()}}
 function animDone(){if(anim&&PL[anim.who]&&FR[PL[anim.who].c])FR[PL[anim.who].c].style.transform='';anim=null;for(const t of ['tcold','tdim','tfl'])$(t).style.opacity=0;show(null);for(const e of $('mems').children)e.classList.remove('out','dim');setTimeout(pump,200)}
 addEventListener('message',e=>{const d=e.data||{};if(!anim)return;const f=FR[PL[anim.who]?PL[anim.who].c:''];if(!f||e.source!==f.contentWindow)return;
   if(d.ev==='sfx'){charSfx(PL[anim.who].c,d.k,d.p);return}
   if(d.ev==='tint'){$('tcold').style.opacity=d.cold||0;$('tdim').style.opacity=d.dim;const fl=$('tfl');fl.style.background=`rgb(${d.col})`;fl.style.opacity=d.flash;return}
-  // impact: with the answer already known the engine shows it; otherwise the target keeps guarding on its own spot (rows left to press DEF)
-  // and the next attack can play, so a busy team fight never piles up
-  if(d.ev==='impact'){const a=anim;a.hit=true;if(a.res){deliver(a);return}const e=memOf(a.tgt);if(e)e.classList.add('guarding');setTimeout(()=>{if(anim===a&&!a.sent){a.cut=true;animDone()}},900)}
+  if(d.ev==='impact'){anim.hit=true;anim.tI=performance.now();deliver(anim)} // the engine holds the guard pose until the result, then plays guard / knockdown
   if(d.ev==='done')animDone()});
 
 // ---------- bots (played on the room owner's screen; offline, on this one) ----------
@@ -764,7 +768,7 @@ for(const b of document.querySelectorAll('#pad button')){const k=b.dataset.k;b.a
   for(const ev of ['pointerup','pointerleave','pointercancel'])b.addEventListener(ev,()=>b.classList.remove('act'))}
 
 // ---------- main loop ----------
-function frame(){requestAnimationFrame(frame);if(!running||paused)return;const t=now(),dur=buf.duration;botTick(t);clashTick(t);fxTick(t);
+function frame(){requestAnimationFrame(frame);animWatch();if(!running||paused)return;const t=now(),dur=buf.duration;botTick(t);clashTick(t);fxTick(t);
   $('song').style.width=Math.min(100,t/dur*100)+'%';
   const i=Math.floor((t-beatT(0))/(SET_BEATS*SPB));
   if(i>=0&&i!==setIdx&&beatT((i+1)*SET_BEATS)<dur-.5){if(cur&&!cur.done){cur.done=true;resolveSet(ME,cur.seq.length,0,'SP',cur.i,cur.rb);showJudge(ME,'MISS');sfx('MISS')}setIdx=i;newSet(i)}
@@ -782,7 +786,7 @@ async function startGame(){try{await loadAll();await needEngines()}catch(err){ch
 function finish(){
   // online: send the final scores of my players and wait (briefly) for everyone else's, so all screens show the same result
   if(live()&&!NETR.fin){NETR.fin=1;running=false;try{src&&src.stop()}catch(e){}$('lane').classList.remove('show');
-    for(const id of ids())if(local(id)){PL[id].done=NETR.g;NET.update('rooms/'+NETR.rid+'/p/'+id,{zp:Math.round(PL[id].zp),g:Math.round(PL[id].g),bonus:Math.round(PL[id].bonus||0),done:NETR.g})}
+    for(const id of ids())if(local(id)){PL[id].done=NETR.g;NET.update('rooms/'+NETR.rid+'/p/'+id,{zp:Math.round(PL[id].zp),g:Math.round(PL[id].g),bonus:Math.round(PL[id].bonus||0),stats:PL[id].stats,done:NETR.g})}
     const t=Date.now(),w=()=>{if(ids().every(i=>PL[i].done===NETR.g)||Date.now()-t>4000)finish();else setTimeout(w,150)};w();return}
   running=false;camOut();$('lane').classList.remove('show');try{src&&src.stop()}catch(e){}
   const other=MYTEAM==='L'?'R':'L',a=Math.round(tz(MYTEAM)),b=Math.round(tz(other)),res=a>b?'win':a<b?'lose':'draw';

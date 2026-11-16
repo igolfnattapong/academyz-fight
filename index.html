@@ -573,7 +573,7 @@ button{font-family:inherit}
         <div class="mapv" id="mapV" role="group" aria-roledescription="carousel"></div>
         <button type="button" class="mapnav" id="mapN" aria-label="แมพถัดไป">›</button></div>
       <div class="dots" id="mapD"></div></div>
-    <div class="moderow" role="group" aria-label="โหมด"><span>โหมด</span><button type="button" data-size="1" aria-pressed="true">1v1</button><button type="button" data-size="2" aria-pressed="false">2v2</button><button type="button" data-size="3" aria-pressed="false">3v3</button></div>
+    <div class="moderow" role="group" aria-label="โหมด"><span>โหมด</span><button type="button" data-size="1" aria-pressed="true">1v1</button><button type="button" data-size="2" aria-pressed="false">2v2</button></div>
     <div class="lockrow"><label class="sw"><input type="checkbox" id="nLock"><i></i>ล็อกห้อง</label>
       <input id="nPass" inputmode="numeric" maxlength="4" placeholder="รหัส 4 ตัว" aria-label="รหัสห้อง 4 ตัวเลข" disabled></div>
     <div class="note" id="nErr" aria-live="polite"></div>
@@ -821,7 +821,7 @@ for(const b of document.querySelectorAll('[data-close]'))b.onclick=()=>b.closest
 addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.dlg.on').forEach(d=>d.classList.remove('on'))});
 // chat (local for now)
 const clog=$('clog');const line=(w,t)=>{const d=document.createElement('div');d.innerHTML='<b></b>: ';d.firstChild.textContent=w;d.append(t);clog.append(d);clog.scrollTop=1e9};
-line('ระบบ','ห้องที่มีป้าย BOT เป็นบอทรอเล่นด้วย · สร้างห้องเลือกได้ 1v1 / 2v2 / 3v3');
+line('ระบบ','ห้องที่มีป้าย BOT เป็นบอทรอเล่นด้วย · สร้างห้องเลือกได้ 1v1 / 2v2');
 $('cform').onsubmit=e=>{e.preventDefault();const v=$('cin').value.trim().slice(0,120);if(v){if(NET.on)NET.push('rooms/_lobby/chat',{n:pname,t:v,at:NET.now()});else line(pname,v)}$('cin').value=''};
 layout();drawStage();
 // ---------- 5 · ranked matchmaking (bots until the server exists): random opponent, stage and song; tempo from the tier ----------
