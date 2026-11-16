@@ -581,8 +581,12 @@ function layout(){const st=$('stage'),w=st.clientWidth,h=st.clientHeight,u=Math.
   for(const f of st.querySelectorAll('iframe')){f.style.width=iw+'px';f.style.left=fl+'px'}
   LY={u,ih,iw,fl,feet};drawMems()}
 // formation per slot: x offset (part of the engine width, away from the middle), height above the front line (part of the engine height), size
-const FORM={2:[[0,0,1],[.135,.06,.9]],3:[[0,0,1],[.125,.075,.86],[.215,-.005,1]]};
-function slotXY(side,slot){const [dx,dy,s]=FORM[SIZE][slot]||[0,0,1],base=side==='l'?.282:.718,x=LY.fl+LY.iw*(base+(side==='l'?-dx:dx));return {x,y:LY.feet-LY.ih*dy,s,z:dy>0?1:2}}
+// everyone stands in one line on the floor (slot 0 nearest the middle); characters are drawn smaller so a whole team fits
+const ZM=SIZE===3?.55:.62,SPOTS={2:[.33,.17],3:[.355,.23,.105]};
+const slotF=(side,slot)=>{const f=SPOTS[SIZE][slot]||.3;return side==='l'?f:1-f}; // part of the engine's width
+function slotXY(side,slot){return {x:LY.fl+LY.iw*slotF(side,slot),y:LY.feet,s:ZM/.72,z:3-slot}}
+// engine world x of a point at part f of the engine's width (the engine draws with zoom ZM around the middle)
+const worldX=f=>480+(f*960-480)/ZM;
 // the figure's picture is drawn exactly like the engine draws the idle pose: 270 world units tall, engine zoom .72
 function figSize(c){const d=CH&&CH[c];if(!d)return null;const k=270/d.ay*(d.k||1)*.72*LY.ih/540;return {w:d.w*k,h:d.h*k,ox:d.ax*k,oy:d.ay*k,src:d.src}}
 function memEl(key){let e=document.getElementById('m_'+key);if(e)return e;e=document.createElement('div');e.className='mem';e.id='m_'+key;
@@ -629,14 +633,14 @@ drawTicks();
 
 // ---------- engines: one per character in the room; the target is swapped in before each attack ----------
 function needEngines(){const want=new Set(ids().map(i=>PL[i].c)),ps=[];
-  for(const c of want)if(!FR[c]){const f=document.createElement('iframe');f.setAttribute('allowtransparency','true');f.src=`fight_${c}.html?t=${c==='hero'?'katana':'hero'}&z=.72&bg=0`;f.title='ท่าของ'+CHARS[c].name;
+  for(const c of want)if(!FR[c]){const f=document.createElement('iframe');f.setAttribute('allowtransparency','true');f.src=`fight_${c}.html?t=${c==='hero'?'katana':'hero'}&z=${ZM}&bg=0`;f.title='ท่าของ'+CHARS[c].name;
     $('cam').append(f);FR[c]=f;f.ready=new Promise(r=>f.addEventListener('load',()=>setTimeout(r,500),{once:true}));ps.push(f.ready)}
   layout();return Promise.all(Object.values(FR).map(f=>f.ready))}
 function show(c,mir){for(const k in FR){FR[k].classList.toggle('on',k===c);if(k===c)FR[k].classList.toggle('mir',!!mir)}}
 // camera: closes in on the attacker while it charges, eases out before the hit
 const CAMHOLD={hero:.75,heroine:1.4,katana:1.55,ice:2.3,fire:1.3};let camT=null,camLeft=0,camAt=0;
-function camZoom(side,c){const st=$('stage'),cs=getComputedStyle(st),x=parseFloat(cs.getPropertyValue(side==='l'?'--xl':'--xr')),y=parseFloat(cs.getPropertyValue('--feet'))-parseFloat(cs.getPropertyValue('--ih'))*.17;
-  const cm=$('cam');cm.style.transition='transform .32s cubic-bezier(.2,.8,.3,1)';cm.style.transformOrigin=x+'px '+y+'px';cm.style.transform='scale(1.35)';
+function camZoom(x,c){const st=$('stage'),cs=getComputedStyle(st),y=parseFloat(cs.getPropertyValue('--feet'))-parseFloat(cs.getPropertyValue('--ih'))*.17;
+  const cm=$('cam');cm.style.transition='transform .32s cubic-bezier(.2,.8,.3,1)';cm.style.transformOrigin=x+'px '+y+'px';cm.style.transform='scale(1.25)';
   camLeft=(CAMHOLD[c]||1)*1000/RATE;camAt=performance.now();clearTimeout(camT);camT=setTimeout(camOut,camLeft)}
 function camOut(){clearTimeout(camT);camT=null;const cm=$('cam');cm.style.transition='transform .45s ease-in-out';cm.style.transform=''}
 // ---------- pause menu: suspending the audio clock freezes rows, gate and bot; the engines are slowed to 0 ----------
@@ -690,13 +694,13 @@ function settle(tid,inc){const p=PL[tid],i=p.inc.indexOf(inc);if(i<0)return;p.in
   if(!ok)p.zp=Math.max(0,p.zp-lost);inc.a.res={ok,lost};deliver(inc.a);if(live())netSend({t:'res',u:tid,k:inc.a.key,ok,lost});hud()}
 function deliver(a){if(!a.res||!a.hit||a.sent)return;a.sent=true;const r=a.res,f=FR[PL[a.who]?PL[a.who].c:''];
   if(f)f.contentWindow.postMessage({cmd:'result',res:r.ok?'guard':'fail'},'*');sfx(r.ok?'guard':'shatter');petAct(a.tgt,r.ok?'cheer':'hurt');
-  popText(a.tside,r.ok||!r.lost?'GUARD!!!':'-'+r.lost.toLocaleString(),PL[a.tgt]?PL[a.tgt].name:'',r.ok||!r.lost?'#7cc8ff':'#ff4d6a')}
+  popText(a.tx?a.tx+'px':a.tside,r.ok||!r.lost?'GUARD!!!':'-'+r.lost.toLocaleString(),PL[a.tgt]?PL[a.tgt].name:'',r.ok||!r.lost?'#7cc8ff':'#ff4d6a')}
 // clash: two players who hit each other in the same row — the faster one goes, the other's attack is lost
 const CLASH={};
 function clashAdd(id,tgt,dmg,lvl,si,m){(CLASH[si]||(CLASH[si]={}))[id]={tgt,dmg,lvl,m};if(live()&&local(id))netSend({t:'atk',u:id,tgt,si,dmg,lvl,m})}
 function beats(a,b,ca,cb){const d=PL[a].st[2]-PL[b].st[2];if(d)return d>0;const fa=!!PL[a].fx.first,fb=!!PL[b].fx.first;if(fa!==fb)return fa;if(ca.m!==cb.m)return ca.m>cb.m;return a<b}
 function clashTick(t){for(const k in CLASH){const si=+k;if(t<beatT(si*SET_BEATS+CHECK_BEAT)+(live()?.9:.36))continue;const c=CLASH[k];delete CLASH[k];const lost=new Set();
-    for(const a in c){const b=c[a].tgt;if(c[b]&&c[b].tgt===a&&!lost.has(a)&&!lost.has(b)){const w=beats(a,b,c[a],c[b])?a:b,l=w===a?b:a;lost.add(l);popText(sideOf(l),'TOO SLOW!',PL[l].name,'#c9cbd6');sfx('err')}}
+    for(const a in c){const b=c[a].tgt;if(c[b]&&c[b].tgt===a&&!lost.has(a)&&!lost.has(b)){const w=beats(a,b,c[a],c[b])?a:b,l=w===a?b:a;lost.add(l);popText(LY.fl+LY.iw*slotF(sideOf(l),PL[l].slot)+'px','TOO SLOW!',PL[l].name,'#c9cbd6');sfx('err')}}
     for(const a of Object.keys(c).sort())if(!lost.has(a)&&PL[a]&&PL[c[a].tgt])launch(a,c[a].tgt,c[a].dmg,c[a].lvl,si)}}
 function launch(aid,tid,dmg,lvl,si){const a={who:aid,tgt:tid,dmg,lvl,key:aid+'_'+si,tside:sideOf(tid)};const inc={dmg,lvl,guard:0,from:si+1,left:GUARD_ROWS,a};a.inc=inc;ATK[a.key]=a;
   PL[tid].inc.push(inc);if(local(tid))autoGuard(tid,inc);queue.push(a);pump();
@@ -704,9 +708,11 @@ function launch(aid,tid,dmg,lvl,si){const a={who:aid,tgt:tid,dmg,lvl,key:aid+'_'
 // one animation at a time: the attacker's engine plays at the duel spots, everyone else steps back
 function pump(){if(anim||!queue.length)return;const a=queue.shift();if(!PL[a.who]||!PL[a.tgt]){setTimeout(pump,0);return}anim=a;const A=PL[a.who],T=PL[a.tgt],f=FR[A.c],sd=sideOf(a.who);
   if(!f){a.hit=true;deliver(a);anim=null;setTimeout(pump,200);return}
-  for(const id of ids()){const e=memOf(id);if(!e)continue;e.classList.toggle('out',id===a.who||id===a.tgt);e.classList.toggle('dim',id!==a.who&&id!==a.tgt)}
-  f.contentWindow.postMessage({cmd:'tgt',t:T.c},'*');f.contentWindow.postMessage({cmd:'vis',a:1,t:1},'*');show(A.c,sd==='r');
-  f.contentWindow.postMessage({cmd:'play'},'*');camZoom(sd,A.c);petAct(a.who,'go')}
+  // the attacker's engine draws both fighters where they stand (mirrored when the attacker is on the right); their own figures step aside meanwhile
+  const mir=sd==='r',fa=slotF(sd,A.slot),ft=slotF(sideOf(a.tgt),T.slot),m=x=>mir?1-x:x;a.tx=LY.fl+LY.iw*ft;
+  f.contentWindow.postMessage({cmd:'tgt',t:T.c},'*');f.contentWindow.postMessage({cmd:'pos',ax:worldX(m(fa)),tx:worldX(m(ft))},'*');f.contentWindow.postMessage({cmd:'vis',a:1,t:1},'*');
+  setTimeout(()=>{if(anim!==a)return;for(const id of [a.who,a.tgt]){const e=memOf(id);if(e)e.classList.add('out')}show(A.c,mir);
+    f.contentWindow.postMessage({cmd:'play'},'*');camZoom(LY.fl+LY.iw*fa,A.c);petAct(a.who,'go')},60)}
 function animDone(){anim=null;for(const t of ['tcold','tdim','tfl'])$(t).style.opacity=0;show(null);for(const e of $('mems').children)e.classList.remove('out','dim');setTimeout(pump,200)}
 addEventListener('message',e=>{const d=e.data||{};if(!anim)return;const f=FR[PL[anim.who]?PL[anim.who].c:''];if(!f||e.source!==f.contentWindow)return;
   if(d.ev==='sfx'){charSfx(PL[anim.who].c,d.k,d.p);return}
