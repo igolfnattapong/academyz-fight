@@ -285,6 +285,10 @@ body{font-family:var(--body);font-size:15px;line-height:1.5;padding:0;overflow:h
 .tvs{font-family:"Bangers",var(--disp);font-size:calc(5*var(--u));color:#fff;-webkit-text-stroke:calc(.4*var(--u)) #14151f;paint-order:stroke fill}
 .tzp{font-family:"Bangers",var(--disp);font-size:calc(6*var(--u));color:#e8344f;-webkit-text-stroke:calc(.4*var(--u)) #fff;paint-order:stroke fill}
 .tzp.lo{color:#8a8fa8;font-size:calc(4.4*var(--u))}
+/* I'm being hit: guard now */
+.lane.hitme{box-shadow:0 0 0 calc(.5*var(--u)) #1f74d8,0 0 calc(3*var(--u)) #4fb1ff}
+.lane.hitme::before{content:"โดนตี! กด DEF กันไว้";position:absolute;left:50%;top:calc(-4.6*var(--u));transform:translateX(-50%);font-family:var(--body);font-weight:700;font-size:calc(2.4*var(--u));color:#fff;background:#1f74d8;border:calc(.35*var(--u)) solid #14151f;border-radius:calc(3*var(--u));padding:0 calc(2*var(--u));white-space:nowrap;animation:hitB .6s ease-in-out infinite alternate}
+@keyframes hitB{to{transform:translateX(-50%) scale(1.06)}}
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="rbg" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#ff4d6a"/><stop offset=".25" stop-color="#ffd23f"/><stop offset=".5" stop-color="#5dff6e"/><stop offset=".75" stop-color="#4fd1ff"/><stop offset="1" stop-color="#c58bff"/></linearGradient></defs></svg>
 <div class="stage" id="stage">
@@ -611,6 +615,7 @@ drawTicks();
 
 // ---------- main loop ----------
 function frame(){requestAnimationFrame(frame);if(!running||paused)return;const t=now(),dur=buf.duration;botTick(t);clashTick(t);fxTick(t);
+  $('lane').classList.toggle('hitme',!!P.me.inc); // shown as soon as an attack on me is on its way
   $('song').style.width=Math.min(100,t/dur*100)+'%';
   const i=Math.floor((t-beatT(0))/(SET_BEATS*SPB));
   if(i>=0&&i!==setIdx&&beatT((i+1)*SET_BEATS)<dur-.5){if(cur&&!cur.done){cur.done=true;resolveSet('me',cur.seq.length,0,'SP',cur.i,cur.rb);showJudge('me','MISS');sfx('MISS')}setIdx=i;newSet(i)}
@@ -645,7 +650,14 @@ $('go').onclick=async()=>{const go=$('go');go.textContent='กำลังโห
     await loadCues();await loadSamples([pick.me,pick.op]);await loadGameSfx();if(!(ROOM&&FR.me&&pick.op))await mountFrames();if(!ROOM)petVis(1,1);await new Promise(r=>setTimeout(r,ROOM?50:600)); // engines load their shared data after the page loads
   }catch(err){$('ovP').textContent='โหลดไม่สำเร็จ: '+err.message;go.textContent='ลองอีกครั้ง';return}
   resetStats();$('result').hidden=true;$('pad').style.visibility='';for(const k in P){const F=FX.build(GEAR[k]),b=CHARS[pick[k]].st;Object.assign(P[k],{zp:0,inc:null,combo:0,fx:F,st:b.map((v,j)=>v+F.add[j]+v*F.pct/100),g:F.startGauge?C.full*F.startGauge/100:0,tk:{}})}anim=null;queue=[];botQ=[];for(const k in CLASH)delete CLASH[k];setIdx=-1;cur=null;$('arrows').innerHTML='';hud();show('me');
-  src=ac.createBufferSource();src.buffer=buf;if(!musicBus){musicBus=ac.createGain();musicBus.connect(ac.destination)}musicBus.gain.value=VOL.m/100;src.playbackRate.value=RATE;src.connect(musicBus);t0=ac.currentTime+(NETR&&NETR.startAt?Math.max(.15,(NETR.startAt-NET.now())/1000):.15);if(NETR)NETR.startAt=0;src.start(t0);running=true;paused=false;$('over').style.display='none';$('gear').hidden=false;go.textContent='เริ่มเพลง'};
+  // a browser may keep the sound off until this screen is tapped (the other player pressed start, not me): ask for a tap, then join in
+  if(ac.state!=='running'){try{await ac.resume()}catch(e){}}
+  if(ac.state!=='running'){const gr=$('getready');gr.textContent='แตะจอ / กดปุ่มใดก็ได้ เพื่อเริ่มเพลง';gr.classList.add('show');
+    await new Promise(r=>{const f=()=>{ac.resume().then(()=>{if(ac.state==='running'){removeEventListener('pointerdown',f,true);removeEventListener('keydown',f,true);r()}}).catch(()=>{})};addEventListener('pointerdown',f,true);addEventListener('keydown',f,true)});
+    gr.textContent='GET READY !'}
+  // online, both songs start at the shared start time; a screen that finished loading late joins in at the right point of the song
+  src=ac.createBufferSource();src.buffer=buf;if(!musicBus){musicBus=ac.createGain();musicBus.connect(ac.destination)}musicBus.gain.value=VOL.m/100;src.playbackRate.value=RATE;src.connect(musicBus);
+  {const d=NETR&&NETR.startAt?(NETR.startAt-NET.now())/1000:.15;if(NETR)NETR.startAt=0;t0=ac.currentTime+d;if(d>=.05)src.start(t0);else src.start(0,Math.min(buf.duration-1,(-d)*RATE))}running=true;paused=false;$('over').style.display='none';$('gear').hidden=false;go.textContent='เริ่มเพลง'};
 
 // ---------- pause menu: suspending the audio clock freezes rows, gate and bot; the engines are slowed to 0 ----------
 let paused=false;
@@ -681,7 +693,7 @@ function myRec(){let pic=null;try{const a=localStorage.getItem('mf_avatar');if(a
 async function netRoom(){const uid=await NET.init();
   if(!uid){NETR.dead=1;if(ROOM.owner)chatLine('ระบบ','ต่อระบบออนไลน์ไม่ได้ · ยังไม่มีใครเข้าห้องนี้ได้ ลองออกแล้วสร้างห้องใหม่');else{chatLine('ระบบ','ต่อระบบออนไลน์ไม่ได้');chatLine('ระบบ','กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',2500)}return}
   if(ROOM.owner){const room={no:+ROOM.no||0,name:ROOM.name,song:(QP.get('song')||'wake'),map:ROOM.map,lock:ROOM.lock,pass:QP.get('pw')||'',owner:uid,host:pname2,c:pick.me,at:NET.now(),st:'room',p:{[uid]:myRec()}};
-    NETR.rid=NET.push('rooms',room);NET.onDisc('rooms/'+NETR.rid,null);
+    NETR.rid=NET.push('rooms',room);NET.onDisc('rooms/'+NETR.rid,null);NETR.meta={...room};delete NETR.meta.p;
     const q=new URLSearchParams(location.search);q.set('net',NETR.rid);history.replaceState(null,'','?'+q);
     chatLine('ระบบ','สร้างห้องออนไลน์แล้ว · รอเพื่อนเข้าห้อง (ห้อง '+ROOM.no+' ในล็อบบี้)')}
   else{const own=await NET.get('rooms/'+NETR.rid+'/owner');
@@ -689,9 +701,15 @@ async function netRoom(){const uid=await NET.init();
     if(!r||!r.ok){chatLine('ระบบ','ห้องเต็มหรือปิดไปแล้ว · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',2500);return}
     NET.onDisc('rooms/'+NETR.rid+'/p/'+uid,null)}
   NETR.me='rooms/'+NETR.rid+'/p/'+uid;NETR.live=1;
-  addEventListener('pagehide',()=>{try{ROOM.owner?NET.remove('rooms/'+NETR.rid):NET.remove(NETR.me)}catch(e){}});
+  addEventListener('pagehide',()=>{NETR.leaving=1;try{ROOM.owner?NET.remove('rooms/'+NETR.rid):NET.remove(NETR.me)}catch(e){}});
   const R='rooms/'+NETR.rid;
-  NET.sub(R+'/owner',o=>{if(!o&&!ROOM.owner&&!NETR.closed){NETR.closed=1;if(running||NETR.fin===1)abortGame();chatLine('ระบบ','เจ้าของห้องออกแล้ว ห้องปิด · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',1800)}});
+  // the room disappears: if it's mine and this page is still open, it was a short drop of the connection — put the room back;
+  // the other player waits a few seconds for that before giving up
+  NET.sub(R+'/owner',o=>{if(o||NETR.leaving)return;
+    if(ROOM.owner){if(running||NETR.fin===1)abortGame();NET.set(R,{...NETR.meta,st:'room',at:NET.now(),p:{[uid]:myRec()}}).then(()=>{NET.onDisc(R,null);chatLine('ระบบ','เชื่อมต่อใหม่แล้ว')});return}
+    if(NETR.closed)return;NETR.closed=1;
+    setTimeout(async()=>{if(await NET.get(R+'/owner')){NETR.closed=0;return}
+      if(running||NETR.fin===1)abortGame();chatLine('ระบบ','เจ้าของห้องออกแล้ว ห้องปิด · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',1800)},6000)});
   NET.sub(R+'/p',ps=>netPlayers(ps||{}));
   let first=true;NET.sub(R+'/start',st=>{if(!st)return;if(first&&st.at<NET.now()){first=false;NETR.g=st.g;return}first=false;
     if(st.g>NETR.g&&ROOM.phase==='room'){NETR.g=st.g;NETR.startAt=st.at;NETR.opDone=-1;rStart()}});
@@ -703,7 +721,15 @@ function abortGame(){running=false;NETR.fin=0;try{src&&src.stop()}catch(e){}camO
   $('lane').classList.remove('show');$('getready').classList.remove('show');for(const id of ['jL','jR','pop'])$(id).classList.remove('show');$('result').hidden=true;
   for(const k in P){P[k].inc=null;P[k].zp=0;P[k].g=0}hud();show('me');popText('50%','เกมจบ','อีกฝ่ายหลุดออก','#fff');
   ROOM.phase='room';here('room');ROOM.me.ready=false;netMe();if(ROOM.owner&&NET.on)NET.update('rooms/'+NETR.rid,{st:'room'});$('stage').classList.add('room-on');$('pad').style.visibility='hidden'}
+// a short network drop runs the room's 'on disconnect' and removes my record; while this page is open I take my place back
+let rejoining=false;
+async function rejoin(){if(rejoining||NETR.leaving)return;rejoining=true;const uid=NET.uid,R='rooms/'+NETR.rid;if(running||NETR.fin===1)abortGame();
+  let own=await NET.get(R+'/owner');for(let k=0;k<6&&!own;k++){await new Promise(r=>setTimeout(r,1000));own=await NET.get(R+'/owner')} // the owner may be putting the room back
+  ROOM.me.ready=false;const r=own&&await NET.tx(R+'/p',p=>{p=p||{};if(p[uid])return p;if(Object.keys(p).length>=2)return;p[uid]=myRec();return p});rejoining=false;
+  if(!r||!r.ok){chatLine('ระบบ','หลุดออกจากห้อง · กลับไปล็อบบี้…');setTimeout(()=>location.href='index.html#lobby',1800);return}
+  NET.onDisc(R+'/p/'+uid,null);chatLine('ระบบ','เชื่อมต่อใหม่แล้ว');rDraw()}
 async function netPlayers(ps){const uid=NET.uid,k=Object.keys(ps).find(x=>x!==uid),o=k&&ps[k];
+  if(!ROOM.owner&&!ps[uid]&&!NETR.leaving)rejoin();
   if(o&&!NETR.opUid){NETR.opUid=k;pick.op=CHARS[o.c]?o.c:'hero';PET.op=PETS.includes(o.pet)?o.pet:null;GEAR.op=Array.isArray(o.gear)?o.gear:[];petImg('op');
     ROOM.op={name:String(o.name||'ผู้เล่น').slice(0,16),net:true,ready:!!o.ready,placed:!!o.placed,tier:tierBy(o.tier),pic:typeof o.pic==='string'&&o.pic.startsWith('data:image/')?o.pic:null};
     chatLine('ระบบ',ROOM.op.name+' เข้าห้อง');sfx('GOOD');rPreload();netMounting=rMount();await netMounting;netMounting=null;rPanel('op',ROOM.op);rVis();rDraw();return}
@@ -805,7 +831,7 @@ if(ROOM){
   ROOM.meP=meCard();
   $('over').style.display='none';$('stage').classList.add('room-on');$('pad').style.visibility='hidden';$('rload').hidden=false;
   $('rinfo').innerHTML='';{const i=$('rinfo');const b=document.createElement('b');b.textContent='ห้อง '+ROOM.no+' · '+ROOM.name+(ROOM.lock?' 🔒':'');i.append(b,document.createElement('br'));
-    i.insertAdjacentHTML('beforeend','Scene <span></span><br>Music <span></span>');const sp=i.querySelectorAll('span');sp[0].textContent=ROOM.map;sp[1].textContent='…';fetch(SONG_URL).then(r=>r.json()).then(j=>{sp[1].textContent=j.title+(j.artist?' : '+j.artist:'')+' · bpm='+Math.round(j.bpm)}).catch(()=>{})}
+    {const d=new Date(document.lastModified),z=n=>String(n).padStart(2,'0');i.insertAdjacentHTML('beforeend','Scene <span></span><br>Music <span></span><br><small style="opacity:.6">เวอร์ชัน '+(isNaN(d)?'?':z(d.getDate())+'/'+z(d.getMonth()+1)+' '+z(d.getHours())+':'+z(d.getMinutes()))+'</small>')}const sp=i.querySelectorAll('span');sp[0].textContent=ROOM.map;sp[1].textContent='…';fetch(SONG_URL).then(r=>r.json()).then(j=>{sp[1].textContent=j.title+(j.artist?' : '+j.artist:'')+' · bpm='+Math.round(j.bpm)}).catch(()=>{})}
   rPanel('me',null);
   if(!ROOM.owner&&CHARS[QP.get('op')]){pick.op=QP.get('op');ROOM.op={name:QP.get('opn')||'เจ้าของห้อง',bot:QP.get('bot')==='1',ready:false,tier:botTier()};rPanel('op',ROOM.op)}else{pick.op=null;rPanel('op',null)}
   const bgReady=new Promise(r=>{const im=new Image();im.onload=im.onerror=r;im.src='bg/practice_room.jpg'});
@@ -822,7 +848,7 @@ if(ROOM){
     if(!me.placed)return rPlace();
     if(ROOM.owner&&me.ready&&op&&op.ready){if(netOn()&&op.net)netStart();else rStart();return}
     me.ready=!me.ready;sfx(me.ready?'GOOD':'tap');netMe();rDraw()};
-  $('rOut').onclick=async()=>{if(netOn()){try{await (ROOM.owner?NET.remove('rooms/'+NETR.rid):NET.remove(NETR.me))}catch(e){}}location.href='index.html#lobby'};
+  $('rOut').onclick=async()=>{if(NETR)NETR.leaving=1;if(netOn()){try{await (ROOM.owner?NET.remove('rooms/'+NETR.rid):NET.remove(NETR.me))}catch(e){}}location.href='index.html#lobby'};
 }
 requestAnimationFrame(frame);hud();layout();
 window.__mf={P,now:()=>now(),cur:()=>cur,press,launch,fx:{lostOf,autoGuard,zpOf,fxTick},get anim(){return anim},pick,CLASH,finish:()=>finish()};

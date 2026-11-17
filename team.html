@@ -285,6 +285,10 @@ body{font-family:var(--body);font-size:15px;line-height:1.5;padding:0;overflow:h
 .tvs{font-family:"Bangers",var(--disp);font-size:calc(5*var(--u));color:#fff;-webkit-text-stroke:calc(.4*var(--u)) #14151f;paint-order:stroke fill}
 .tzp{font-family:"Bangers",var(--disp);font-size:calc(6*var(--u));color:#e8344f;-webkit-text-stroke:calc(.4*var(--u)) #fff;paint-order:stroke fill}
 .tzp.lo{color:#8a8fa8;font-size:calc(4.4*var(--u))}
+/* I'm being hit: guard now */
+.lane.hitme{box-shadow:0 0 0 calc(.5*var(--u)) #1f74d8,0 0 calc(3*var(--u)) #4fb1ff}
+.lane.hitme::before{content:"โดนตี! กด DEF กันไว้";position:absolute;left:50%;top:calc(-4.6*var(--u));transform:translateX(-50%);font-family:var(--body);font-weight:700;font-size:calc(2.4*var(--u));color:#fff;background:#1f74d8;border:calc(.35*var(--u)) solid #14151f;border-radius:calc(3*var(--u));padding:0 calc(2*var(--u));white-space:nowrap;animation:hitB .6s ease-in-out infinite alternate}
+@keyframes hitB{to{transform:translateX(-50%) scale(1.06)}}
 /* ---------- team battle (2v2 / 3v3): extra rules on top of the 1v1 battle screen ---------- */
 .stage iframe{z-index:5}
 .cam .mem{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none}
@@ -963,8 +967,8 @@ let HERE='room';function here(w){HERE=w;NET.init().then(u=>{if(!u)return;NET.set
 // ---------- open the room ----------
 here('room');setTimeout(()=>here(HERE),2500);setInterval(()=>here(HERE),20000);
 $('pad').style.visibility='hidden';$('rload').hidden=false;
-{const i=$('rinfo');const b=document.createElement('b');b.textContent='ห้อง '+ROOM.no+' · '+ROOM.name+' · '+SIZE+'v'+SIZE+(ROOM.lock?' 🔒':'');b.title='build 16/11 23:38';i.append(b,document.createElement('br'));
-  i.insertAdjacentHTML('beforeend','Scene <span></span><br>Music <span></span><br><small style="opacity:.6">เวอร์ชัน 16/11 23:38</small>');const sp=i.querySelectorAll('span');sp[0].textContent=ROOM.map;sp[1].textContent='…';fetch(SONG_URL).then(r=>r.json()).then(j=>{sp[1].textContent=j.title+(j.artist?' : '+j.artist:'')+' · bpm='+Math.round(j.bpm)}).catch(()=>{})}
+{const i=$('rinfo');const b=document.createElement('b');b.textContent='ห้อง '+ROOM.no+' · '+ROOM.name+' · '+SIZE+'v'+SIZE+(ROOM.lock?' 🔒':'');b.title='build 17/11 12:10';i.append(b,document.createElement('br'));
+  i.insertAdjacentHTML('beforeend','Scene <span></span><br>Music <span></span><br><small style="opacity:.6">เวอร์ชัน 17/11 12:10</small>');const sp=i.querySelectorAll('span');sp[0].textContent=ROOM.map;sp[1].textContent='…';fetch(SONG_URL).then(r=>r.json()).then(j=>{sp[1].textContent=j.title+(j.artist?' : '+j.artist:'')+' · bpm='+Math.round(j.bpm)}).catch(()=>{})}
 const bgReady=new Promise(r=>{const im=new Image();im.onload=im.onerror=r;im.src='bg/practice_room.jpg'});
 rPreload();addEventListener('pointerdown',rWake,{capture:true});addEventListener('keydown',rWake,{capture:true});
 setTimeout(()=>$('rload').classList.add('grid'),500);
