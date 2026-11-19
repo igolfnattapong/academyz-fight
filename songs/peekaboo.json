@@ -1,0 +1,9 @@
+{
+  "id": "peekaboo",
+  "title": "Peek A Boo(M)",
+  "artist": "Haunted Roots",
+  "file": "peekaboo.mp3",
+  "bpm": 150.02,
+  "first": 0.675,
+  "note": "bpm and first downbeat fitted to the kick drum over the whole song (tools/song_beat.py + fit); offset set like wake/himma (beat grid ~0.12 s after the kick's energy peak)"
+}

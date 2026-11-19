@@ -747,7 +747,7 @@ $('gotOk').onclick=()=>{$('dGot').classList.remove('on');UISFX.play('click')};
 for(const t of document.querySelectorAll('#s3 .tab'))t.onclick=()=>{BAGT=t.dataset.bag;drawLoad()};
 
 // ---------- 4 · lobby (mock rooms until the server exists) ----------
-const SONGS2=[{name:'Wake the Blood',bpm:122,id:'wake'},{name:'HIMMA',bpm:115,id:'himma'}];
+const SONGS2=[{name:'Wake the Blood',bpm:122,id:'wake'},{name:'HIMMA',bpm:115,id:'himma'},{name:'Peek A Boo(M)',bpm:150,id:'peekaboo',artist:'Haunted Roots'}];
 // bot rooms that wait for players (test period: there are no other players yet)
 const HOSTS=[['BOT ชิโระ','katana'],['BOT FireBoy','fire'],['BOT Yuki','ice'],['BOT NoteNote','heroine'],['BOT GG_EZ','hero']];
 const ROOMS=HOSTS.map(([h,c],i)=>({no:i+1,name:['บอทรอซ้อมมือ','ห้องบอทมือใหม่','บอทสายกัน','บอทฝึกเพลง','บอทพร้อมตี'][i],host:h,c,bot:true,full:false,lock:false,map:0,song:i%2}));
@@ -935,7 +935,7 @@ const SIL='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.or
   $('hSet').onclick=()=>{draw();$('dSet').classList.add('on');$('sVolM').focus()}}
 $('hOut').onclick=async()=>{if(NET.acct){await CLOUD.signOut();location.replace(location.pathname);return}try{localStorage.removeItem('mf_session')}catch(e){}LT='in';$('lgU').value='';$('lgP').value='';go('s0')};
 // ---------- jukebox on the plaza: background music from the game's songs (keeps playing through the menus) ----------
-const JUKE=SONGS2.map(x=>({...x,file:{wake:'wake.mp3',himma:'himma.mp3'}[x.id],artist:'HEIRS'}));
+const JUKE=SONGS2.map(x=>({...x,file:x.id+'.mp3',artist:x.artist||'HEIRS'}));
 const jA=new Audio();let jI=0,jVol=40;try{const v=JSON.parse(localStorage.getItem('mf_juke')||'null');if(v){jI=Math.min(JUKE.length-1,v.i|0);jVol=v.v??40}}catch(e){}
 const jSave=()=>{try{localStorage.setItem('mf_juke',JSON.stringify({i:jI,v:jVol}))}catch(e){}};
 function jDraw(){const t=JUKE[jI];$('jT').textContent=t.name;$('jA').textContent=t.artist+' · '+t.bpm+' BPM';const on=!jA.paused;$('juke').classList.toggle('on',on);
